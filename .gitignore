@@ -483,3 +483,6 @@ $RECYCLE.BIN/
 
 # superpowers plan scratch
 .superpowers/
+
+# release build output
+dist/

@@ -1,0 +1,70 @@
+name: Release
+
+# Push a tag like v1.0.0 to build, test and publish a GitHub Release with:
+#   Stint-Setup-<ver>.exe            installer (per-user, no admin)
+#   Stint-<ver>-win-x64-portable.zip single exe, no install
+#   SHA256SUMS.txt
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+
+      - name: Version from tag
+        id: v
+        shell: pwsh
+        run: |
+          $v = '${{ github.ref_name }}'.TrimStart('v')
+          "version=$v" >> $env:GITHUB_OUTPUT
+
+      - name: Test
+        run: dotnet test TimerApp.Tests -c Release
+
+      - name: Publish single-file exe
+        run: >
+          dotnet publish TimerApp.csproj -c Release -r win-x64 --self-contained true
+          -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true
+          -p:EnableCompressionInSingleFile=true -p:DebugType=none
+          -p:Version=${{ steps.v.outputs.version }} -o publish
+
+      - name: Portable zip
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force dist | Out-Null
+          Compress-Archive publish/Stint.exe "dist/Stint-${{ steps.v.outputs.version }}-win-x64-portable.zip"
+
+      - name: Installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) { choco install innosetup -y --no-progress }
+          & $iscc "/DMyAppVersion=${{ steps.v.outputs.version }}" installer/Stint.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Checksums
+        shell: pwsh
+        run: |
+          Get-ChildItem dist -File | ForEach-Object {
+            "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)"
+          } | Set-Content dist/SHA256SUMS.txt
+
+      - name: Create GitHub release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          $notes = ".github/release-notes/${{ github.ref_name }}.md"
+          $noteArgs = if (Test-Path $notes) { @('--notes-file', $notes) } else { @('--generate-notes') }
+          gh release create '${{ github.ref_name }}' (Get-ChildItem dist -File).FullName --title 'Stint ${{ steps.v.outputs.version }}' @noteArgs
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
