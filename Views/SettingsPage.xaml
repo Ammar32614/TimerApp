@@ -25,6 +25,9 @@
                               Margin="0,12,0,0" Click="Toggle_Click"/>
                     <CheckBox x:Name="OnTop" Style="{StaticResource Switch}" Content="Keep window on top"
                               Margin="0,12,0,0" Click="Toggle_Click"/>
+                    <CheckBox x:Name="AtSignIn" Style="{StaticResource Switch}" Content="Start Stint when I sign in"
+                              Margin="0,12,0,0" Click="AtSignIn_Click"
+                              ToolTip="Opens minimised when you sign in to Windows"/>
                 </StackPanel>
             </Border>
 

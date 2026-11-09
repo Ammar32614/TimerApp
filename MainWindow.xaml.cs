@@ -32,6 +32,9 @@ public partial class MainWindow : Window
         Closing += OnClosing;
     }
 
+    /// <summary>Brings the window forward, e.g. when Stint is launched a second time.</summary>
+    public void BringToFront() => RestoreFromTray();
+
     // ---------------- Navigation ----------------
 
     public void Navigate(UserControl page, string title)
@@ -133,8 +136,8 @@ public partial class MainWindow : Window
         if (e.Key == Key.Escape)
         {
             if (typing) Keyboard.ClearFocus();
+            else if (_mini) ToggleMini(); // first leave mini, which also reveals any open sheet
             else if (_timer.CloseSheetIfOpen()) { }
-            else if (_mini) ToggleMini();
             else if (OnSubPage) GoBack();
             e.Handled = true;
             return;
@@ -177,10 +180,13 @@ public partial class MainWindow : Window
 
     private bool IsOnScreen(double left, double top)
     {
-        // Require the title bar to land inside the virtual desktop (handles unplugged monitors).
-        double vl = SystemParameters.VirtualScreenLeft, vt = SystemParameters.VirtualScreenTop;
-        double vr = vl + SystemParameters.VirtualScreenWidth, vb = vt + SystemParameters.VirtualScreenHeight;
-        return left >= vl - Width + 80 && left + 80 <= vr && top >= vt && top + 40 <= vb;
+        // The title bar's middle must sit on an actual monitor (handles unplugged monitors and
+        // gaps between monitors of different sizes). Screen works in pixels, WPF in DIPs.
+        var dpi = System.Windows.Media.VisualTreeHelper.GetDpi(this);
+        var px = new System.Drawing.Point(
+            (int)((left + Width / 2) * dpi.DpiScaleX),
+            (int)((top + 20) * dpi.DpiScaleY));
+        return System.Windows.Forms.Screen.AllScreens.Any(s => s.WorkingArea.Contains(px));
     }
 
     private void ClampToScreen()

@@ -53,15 +53,27 @@ public sealed class Notifier : IDisposable
     {
         try
         {
-            if (File.Exists(AlarmPath)) { new SoundPlayer(AlarmPath).Play(); return; }
+            if (File.Exists(AlarmPath))
+            {
+                _player ??= new SoundPlayer(AlarmPath); // one reusable player, disposed with the notifier
+                _player.Play();
+                return;
+            }
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException) { }
         SystemSounds.Asterisk.Play();
     }
 
+    private static SoundPlayer? _player;
+
     public void Dispose()
     {
         _icon.Visible = false;
+        var icon = _icon.Icon;
+        _icon.ContextMenuStrip?.Dispose();
         _icon.Dispose();
+        if (!ReferenceEquals(icon, System.Drawing.SystemIcons.Application)) icon?.Dispose();
+        _player?.Dispose();
+        _player = null;
     }
 }

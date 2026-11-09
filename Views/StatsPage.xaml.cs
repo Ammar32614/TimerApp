@@ -37,7 +37,7 @@ public partial class StatsPage : UserControl
         StreakValue.Text = streak == 1 ? "1 day" : $"{streak} days";
         StreakSub.Text = streak == 0 ? "Start one today" : todaySec > 0 ? "Including today" : "Study to extend";
 
-        var week = StatsCalculator.Week(sessions, today);
+        var week = StatsCalculator.Week(sessions, today, id => App.Data.SubjectFor(id).Id);
         int weekSec = week.Sum(d => d.BySubject.Values.Sum());
         int activeDays = week.Count(d => d.BySubject.Values.Sum() > 0);
         WeekValue.Text = TimerPage.FormatDuration(weekSec);

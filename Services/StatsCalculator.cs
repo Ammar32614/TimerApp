@@ -20,9 +20,12 @@ public static class StatsCalculator
         return streak;
     }
 
+    /// <param name="resolveSubject">Maps a stored subject id to the one to group under
+    /// (e.g. deleted subjects → General). Identity when null.</param>
     public static IReadOnlyList<(DateOnly Day, Dictionary<Guid, int> BySubject)> Week(
-        IEnumerable<Session> sessions, DateOnly lastDay)
+        IEnumerable<Session> sessions, DateOnly lastDay, Func<Guid, Guid>? resolveSubject = null)
     {
+        resolveSubject ??= id => id;
         var first = lastDay.AddDays(-6);
         var list = Enumerable.Range(0, 7)
             .Select(i => (Day: first.AddDays(i), BySubject: new Dictionary<Guid, int>()))
@@ -32,7 +35,8 @@ public static class StatsCalculator
             var d = DayOf(s);
             if (d < first || d > lastDay) continue;
             var bucket = list[d.DayNumber - first.DayNumber].BySubject;
-            bucket[s.SubjectId] = bucket.GetValueOrDefault(s.SubjectId) + s.Seconds;
+            var id = resolveSubject(s.SubjectId);
+            bucket[id] = bucket.GetValueOrDefault(id) + s.Seconds;
         }
         return list;
     }

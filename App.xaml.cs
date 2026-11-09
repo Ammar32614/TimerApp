@@ -21,6 +21,24 @@ public partial class App : Application
     protected override void OnStartup(StartupEventArgs e)
     {
         base.OnStartup(e);
+
+        // One Stint at a time: a second launch just brings the running window forward.
+        // The mutex name is also used by the installer to detect a running copy.
+        _instanceMutex = new System.Threading.Mutex(true, "Stint.SingleInstance", out bool first);
+        _activateSignal = new System.Threading.EventWaitHandle(false, System.Threading.EventResetMode.AutoReset, "Stint.Activate");
+        if (!first)
+        {
+            _activateSignal.Set();
+            Shutdown();
+            return;
+        }
+        var signal = _activateSignal;
+        new System.Threading.Thread(() =>
+        {
+            while (signal.WaitOne())
+                Dispatcher.BeginInvoke(() => (MainWindow as MainWindow)?.BringToFront());
+        }) { IsBackground = true, Name = "Stint activation listener" }.Start();
+
         Resources["ModeAccent"] = Accent;
         DispatcherUnhandledException += OnUnhandledException;
         // Window.Closing isn't raised on sign-out/shutdown, so keep an in-progress run here too.
@@ -32,8 +50,13 @@ public partial class App : Application
         Notifier = new Notifier();
 
         MainWindow = new MainWindow();
+        // Launched by "Start Stint when I sign in": stay out of the way until needed.
+        if (e.Args.Contains(StartupManager.MinimizedFlag)) MainWindow.WindowState = WindowState.Minimized;
         MainWindow.Show();
     }
+
+    private System.Threading.Mutex? _instanceMutex;
+    private System.Threading.EventWaitHandle? _activateSignal;
 
     /// <summary>Last-resort handler: keep the log safe, write a crash file, tell the user where it is.</summary>
     private void OnUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
@@ -56,6 +79,7 @@ public partial class App : Application
     protected override void OnExit(ExitEventArgs e)
     {
         Notifier?.Dispose();
+        _instanceMutex?.Dispose();
         base.OnExit(e);
     }
 

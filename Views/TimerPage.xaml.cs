@@ -27,6 +27,8 @@ public partial class TimerPage : UserControl
     private TimeSpan _lastLap;
     private int _todayLoggedSeconds;
     private DateOnly _todayDate;
+    private bool? _tabsLocked;
+    private (int, int, Phase)? _dotsKey;
     private string _accentKey = "";
     private Session? _sheetSession;
     private bool _flashError;
@@ -315,14 +317,18 @@ public partial class TimerPage : UserControl
         ResetBtn.ToolTip = active ? "Reset (R)" : _mode == SessionMode.Focus ? "Restart cycle (R)" : "Reset (R)";
 
         // Mode switching is locked while a run is in progress, so time is never lost by accident.
-        foreach (var tab in new[] { FocusTab, TimerTab, StopwatchTab })
+        if (active != _tabsLocked)
         {
-            tab.IsEnabled = !active || tab.IsChecked == true;
-            tab.ToolTip = active && tab.IsChecked != true
-                ? "Reset the current run to switch"
-                : tab == FocusTab ? "Focus blocks with breaks (1)" : tab == TimerTab ? "Plain countdown (2)" : "Count up with laps (3)";
+            _tabsLocked = active;
+            foreach (var tab in new[] { FocusTab, TimerTab, StopwatchTab })
+            {
+                tab.IsEnabled = !active || tab.IsChecked == true;
+                tab.ToolTip = active && tab.IsChecked != true
+                    ? "Reset the current run to switch"
+                    : tab == FocusTab ? "Focus blocks with breaks (1)" : tab == TimerTab ? "Plain countdown (2)" : "Count up with laps (3)";
+            }
+            Picker.IsEnabled = !active;
         }
-        Picker.IsEnabled = !active;
 
         // Accent follows mode/phase
         SetAccentKey(_mode switch
@@ -361,6 +367,9 @@ public partial class TimerPage : UserControl
     {
         every = Math.Clamp(every, 1, 12);
         int done = _cycle.Current == Phase.LongBreak ? every : _cycle.CompletedFocus % every;
+        var key = (every, done, _cycle.Current);
+        if (key == _dotsKey) return; // only rebuild when the cycle actually moved
+        _dotsKey = key;
         DotsPanel.Children.Clear();
         for (int i = 0; i < every; i++)
         {
@@ -417,11 +426,8 @@ public partial class TimerPage : UserControl
     private void OnDataChanged()
     {
         RefreshToday();
-        if (!HasActiveRun)
-        {
-            ClearRun(); // pick up changed durations
-            Picker.Refresh();
-        }
+        if (!HasActiveRun) ClearRun(); // pick up changed durations
+        Picker.Refresh();               // e.g. the selected subject was renamed or deleted
         Render();
     }
 
@@ -467,6 +473,7 @@ public partial class TimerPage : UserControl
 
     private void ShowSheet(Session s)
     {
+        if (_sheetSession != null) SaveSheet(skip: false); // keep a half-written note for the previous session
         _sheetSession = s;
         var subject = App.Data.SubjectFor(s.SubjectId).Name;
         SheetTitle.Text = $"{Minutes(TimeSpan.FromSeconds(s.Seconds))} of {subject} logged";

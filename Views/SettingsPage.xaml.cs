@@ -28,6 +28,7 @@ public partial class SettingsPage : UserControl
         AutoFocus.IsChecked = S.AutoStartFocus;
         Sound.IsChecked = S.SoundOn;
         OnTop.IsChecked = S.Topmost;
+        AtSignIn.IsChecked = SafeStartup(m => m.IsEnabled);
 
         // Keep the switch in sync when the title-bar pin changes it.
         void SyncOnTop() => OnTop.IsChecked = S.Topmost;
@@ -88,6 +89,23 @@ public partial class SettingsPage : UserControl
         App.SaveData();
         (Window.GetWindow(this) as MainWindow)?.ApplyTopmost();
         if (sender == Sound && S.SoundOn) Notifier.PlaySound();
+    }
+
+    private void AtSignIn_Click(object sender, RoutedEventArgs e)
+    {
+        bool want = AtSignIn.IsChecked == true;
+        SafeStartup(m => { m.SetEnabled(want); return true; });
+        AtSignIn.IsChecked = SafeStartup(m => m.IsEnabled); // show what actually happened
+    }
+
+    /// <summary>Registry access can be blocked by policy; never let that crash Settings.</summary>
+    private static bool SafeStartup(Func<StartupManager, bool> action)
+    {
+        try { return action(StartupManager.ForCurrentApp()); }
+        catch (Exception ex) when (ex is UnauthorizedAccessException or System.Security.SecurityException or IOException)
+        {
+            return false;
+        }
     }
 
     // ---------------- Subjects ----------------

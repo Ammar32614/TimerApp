@@ -54,6 +54,20 @@ public class StatsTests
     }
 
     [Fact]
+    public void Week_WithResolver_MergesDeletedSubjectsIntoGeneral()
+    {
+        var gone1 = Guid.NewGuid();
+        var gone2 = Guid.NewGuid();
+        var week = StatsCalculator.Week(
+            [At(Today, 9, 600, gone1), At(Today, 11, 300, gone2), At(Today, 13, 100)],
+            Today,
+            _ => Subject.GeneralId);
+
+        Assert.Single(week[^1].BySubject);
+        Assert.Equal(1000, week[^1].BySubject[Subject.GeneralId]);
+    }
+
+    [Fact]
     public void Week_Returns7Days_EndingLastDay_GroupedBySubject()
     {
         var math = Guid.NewGuid();

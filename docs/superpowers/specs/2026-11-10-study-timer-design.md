@@ -68,7 +68,7 @@ choices beyond "timer + stopwatch, study-oriented" were delegated to Claude.
 - Heatmap intensity buckets relative to daily goal (0, <25%, <50%, <100%, ≥100%).
 - Shortcuts: Space start/pause, R reset, L lap, S skip, 1/2/3 switch mode,
   Ctrl+L log, Ctrl+T stats, Esc back.
-- Mini mode: 260×84 strip showing time, mode colour bar and play button.
+- Mini mode: 280×72 strip showing a small ring, the time and the play button (widened from 260×84 so a stopwatch time fits beside the controls).
 - Closing the window closes the app (tray icon is for notifications + restore
   when minimised); position saved on exit.
 
