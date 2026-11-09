@@ -23,6 +23,8 @@ public partial class App : Application
         base.OnStartup(e);
         Resources["ModeAccent"] = Accent;
         DispatcherUnhandledException += OnUnhandledException;
+        // Window.Closing isn't raised on sign-out/shutdown, so keep an in-progress run here too.
+        SessionEnding += (_, _) => (MainWindow as MainWindow)?.SaveBeforeExit();
 
         // STINT_DATA lets you point the app at a different file (demo data, testing).
         Store = new DataStore(Environment.GetEnvironmentVariable("STINT_DATA") is { Length: > 0 } p ? p : DataStore.DefaultPath);
@@ -57,9 +59,19 @@ public partial class App : Application
         base.OnExit(e);
     }
 
+    private static bool _warnedReadOnly;
+
     public static void SaveData()
     {
-        try { Store.Save(Data); }
+        try
+        {
+            if (!Store.Save(Data) && !_warnedReadOnly)
+            {
+                _warnedReadOnly = true;
+                Notifier.Show("Your study log couldn't be opened",
+                    "Another program may be using data.json. New sessions won't be saved until you restart Stint.", playSound: false);
+            }
+        }
         catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
         {
             Notifier.Show("Couldn't save your study log", ex.Message, playSound: false);
@@ -88,7 +100,8 @@ public partial class App : Application
 
     public static Color ParseColor(string hex)
     {
-        try { return (Color)ColorConverter.ConvertFromString(hex); }
-        catch (FormatException) { return Colors.Gray; }
+        if (string.IsNullOrWhiteSpace(hex)) return Colors.Gray;
+        try { return ColorConverter.ConvertFromString(hex) is Color c ? c : Colors.Gray; }
+        catch (Exception ex) when (ex is FormatException or NotSupportedException) { return Colors.Gray; }
     }
 }

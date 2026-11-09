@@ -26,6 +26,7 @@ public partial class TimerPage : UserControl
     private TimeSpan? _target;
     private TimeSpan _lastLap;
     private int _todayLoggedSeconds;
+    private DateOnly _todayDate;
     private string _accentKey = "";
     private Session? _sheetSession;
     private bool _flashError;
@@ -223,8 +224,7 @@ public partial class TimerPage : UserControl
             ClearRun();
             App.Notifier.Show("Time's up", $"{Minutes(duration)} of {subject} logged.", settings.SoundOn);
         }
-        Render();
-        Window.GetWindow(this)?.Activate();
+        Render(); // no Activate(): the toast is enough, don't steal focus from what the user is writing
     }
 
     private void Log(TimeSpan elapsed, bool showSheet = true)
@@ -332,8 +332,10 @@ public partial class TimerPage : UserControl
             _ => "StopwatchColor",
         });
 
-        // Today strip includes the run in progress
-        int live = active && IsStudyPhase ? (int)elapsed.TotalSeconds : 0;
+        // Today strip includes the run in progress (attributed, like the log, to the day it started)
+        if (DateOnly.FromDateTime(DateTime.Now) != _todayDate) RefreshToday();
+        bool runStartedToday = _runStart is null || DateOnly.FromDateTime(_runStart.Value) == _todayDate;
+        int live = active && IsStudyPhase && runStartedToday ? (int)elapsed.TotalSeconds : 0;
         int today = _todayLoggedSeconds + live;
         TodayRun.Text = FormatDuration(today);
         GoalRun.Text = $" of {FormatDuration(settings.DailyGoalMinutes * 60)}";
@@ -406,8 +408,9 @@ public partial class TimerPage : UserControl
     private void RefreshToday()
     {
         var data = App.Data;
-        _todayLoggedSeconds = StatsCalculator.SecondsOn(data.Sessions, DateOnly.FromDateTime(DateTime.Now));
-        int streak = StatsCalculator.Streak(data.Sessions, DateOnly.FromDateTime(DateTime.Now));
+        _todayDate = DateOnly.FromDateTime(DateTime.Now);
+        _todayLoggedSeconds = StatsCalculator.SecondsOn(data.Sessions, _todayDate);
+        int streak = StatsCalculator.Streak(data.Sessions, _todayDate);
         StreakText.Text = streak switch { 0 => "No streak yet", 1 => "1-day streak", _ => $"{streak}-day streak" };
     }
 

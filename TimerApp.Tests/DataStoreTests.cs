@@ -60,6 +60,73 @@ public class DataStoreTests : IDisposable
     }
 
     [Fact]
+    public void Load_NullSubjectEntry_DoesNotThrow()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(PathIn, "{\"subjects\":[null],\"sessions\":[null]}");
+
+        var data = new DataStore(PathIn).Load();
+
+        Assert.Equal(Subject.GeneralId, data.Subjects.Single().Id);
+        Assert.Empty(data.Sessions);
+    }
+
+    [Fact]
+    public void Load_NullStringsAndColor_AreNormalised()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(PathIn,
+            "{\"subjects\":[{\"id\":\"00000000-0000-0000-0000-000000000002\",\"name\":null,\"color\":null}]," +
+            "\"sessions\":[{\"seconds\":600,\"description\":null,\"note\":null}]}");
+
+        var data = new DataStore(PathIn).Load();
+
+        var s = data.Sessions.Single();
+        Assert.Equal("", s.Description);
+        Assert.Equal("", s.Note);
+        var math = data.Subjects.Single(x => x.Id != Subject.GeneralId);
+        Assert.False(string.IsNullOrEmpty(math.Color));
+        Assert.False(string.IsNullOrEmpty(math.Name));
+        Assert.Contains("600", "" + CsvExporter.ToCsv(data.Sessions, data).Length + "600"); // does not throw
+    }
+
+    [Fact]
+    public void Load_OutOfRangeSettings_AreClamped()
+    {
+        Directory.CreateDirectory(_dir);
+        File.WriteAllText(PathIn,
+            "{\"settings\":{\"focusMinutes\":0,\"shortBreakMinutes\":-3,\"longBreakMinutes\":0,\"longBreakEvery\":0,\"dailyGoalMinutes\":0,\"timerSeconds\":-5}}");
+
+        var s = new DataStore(PathIn).Load().Settings;
+
+        Assert.True(s.FocusMinutes >= 1);
+        Assert.True(s.ShortBreakMinutes >= 1);
+        Assert.True(s.LongBreakMinutes >= 1);
+        Assert.True(s.LongBreakEvery >= 1);
+        Assert.True(s.DailyGoalMinutes >= 5);
+        Assert.True(s.TimerSeconds >= 0);
+    }
+
+    [Fact]
+    public void Load_LockedFile_ReturnsDefaultsAndRefusesToOverwrite()
+    {
+        var store = new DataStore(PathIn);
+        var data = AppData.CreateDefault();
+        data.Sessions.Add(new Session { Seconds = 1500 });
+        store.Save(data);
+        var original = File.ReadAllText(PathIn);
+
+        AppData loaded;
+        using (new FileStream(PathIn, FileMode.Open, FileAccess.Read, FileShare.None))
+            loaded = store.Load();
+
+        Assert.Empty(loaded.Sessions);
+        Assert.True(store.ReadFailed);
+        Assert.False(store.Save(loaded));
+        Assert.Equal(original, File.ReadAllText(PathIn));
+    }
+
+    [Fact]
     public void DeleteSubject_General_ReturnsFalse()
     {
         var data = AppData.CreateDefault();

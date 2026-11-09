@@ -190,8 +190,15 @@ public partial class MainWindow : Window
         Top = Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
     }
 
-    private void OnClosing(object? sender, CancelEventArgs e)
+    private void OnClosing(object? sender, CancelEventArgs e) => SaveBeforeExit();
+
+    private bool _savedForExit;
+
+    /// <summary>Logs any in-progress run and saves position. Safe to call from both Closing and SessionEnding.</summary>
+    public void SaveBeforeExit()
     {
+        if (_savedForExit) return;
+        _savedForExit = true;
         _timer.FlushOnExit();
         var s = App.Data.Settings;
         if (WindowState == WindowState.Normal)

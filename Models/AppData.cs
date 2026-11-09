@@ -15,14 +15,38 @@ public class AppData
         return data;
     }
 
-    /// <summary>Guarantees the undeletable "General" subject exists (e.g. after a hand edit).</summary>
+    /// <summary>
+    /// Repairs anything a hand edit could break: null lists/entries/strings, missing General,
+    /// and settings outside the ranges the Settings page allows.
+    /// </summary>
     public void EnsureGeneral()
     {
-        Sessions ??= [];
-        Subjects ??= [];
+        Sessions = (Sessions ?? []).Where(s => s != null).ToList();
+        Subjects = (Subjects ?? []).Where(s => s != null).ToList();
         Settings ??= new();
+
+        foreach (var s in Sessions)
+        {
+            s.Description ??= "";
+            s.Note ??= "";
+            s.Seconds = Math.Max(0, s.Seconds);
+            s.Rating = Math.Clamp(s.Rating, 0, 5);
+        }
+        foreach (var s in Subjects)
+        {
+            if (string.IsNullOrWhiteSpace(s.Name)) s.Name = "Untitled";
+            if (string.IsNullOrWhiteSpace(s.Color)) s.Color = "#C8CDD8";
+        }
         if (!Subjects.Any(s => s.Id == Subject.GeneralId))
             Subjects.Insert(0, new Subject { Id = Subject.GeneralId, Name = "General", Color = "#C8CDD8" });
+
+        var st = Settings;
+        st.FocusMinutes = Math.Clamp(st.FocusMinutes, 1, 180);
+        st.ShortBreakMinutes = Math.Clamp(st.ShortBreakMinutes, 1, 60);
+        st.LongBreakMinutes = Math.Clamp(st.LongBreakMinutes, 1, 90);
+        st.LongBreakEvery = Math.Clamp(st.LongBreakEvery, 1, 12);
+        st.DailyGoalMinutes = Math.Clamp(st.DailyGoalMinutes, 5, 1440);
+        st.TimerSeconds = Math.Clamp(st.TimerSeconds, 0, 99 * 3600 + 59 * 60 + 59);
     }
 
     public Subject SubjectFor(Guid id) =>

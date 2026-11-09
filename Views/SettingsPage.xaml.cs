@@ -29,6 +29,11 @@ public partial class SettingsPage : UserControl
         Sound.IsChecked = S.SoundOn;
         OnTop.IsChecked = S.Topmost;
 
+        // Keep the switch in sync when the title-bar pin changes it.
+        void SyncOnTop() => OnTop.IsChecked = S.Topmost;
+        App.DataChanged += SyncOnTop;
+        Unloaded += (_, _) => App.DataChanged -= SyncOnTop;
+
         DataPath.Text = App.Store.FilePath;
         Version.Text = $"Stint {typeof(App).Assembly.GetName().Version?.ToString(3)}";
         BuildSubjects();
@@ -74,10 +79,12 @@ public partial class SettingsPage : UserControl
 
     private void Toggle_Click(object sender, RoutedEventArgs e)
     {
-        S.AutoStartBreaks = AutoBreaks.IsChecked == true;
-        S.AutoStartFocus = AutoFocus.IsChecked == true;
-        S.SoundOn = Sound.IsChecked == true;
-        S.Topmost = OnTop.IsChecked == true;
+        // Only write the toggle that was clicked; "on top" can also change from the title-bar pin.
+        bool on = ((CheckBox)sender).IsChecked == true;
+        if (sender == AutoBreaks) S.AutoStartBreaks = on;
+        else if (sender == AutoFocus) S.AutoStartFocus = on;
+        else if (sender == Sound) S.SoundOn = on;
+        else if (sender == OnTop) S.Topmost = on;
         App.SaveData();
         (Window.GetWindow(this) as MainWindow)?.ApplyTopmost();
         if (sender == Sound && S.SoundOn) Notifier.PlaySound();
