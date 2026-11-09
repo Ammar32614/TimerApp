@@ -30,6 +30,13 @@ public class FocusCycle
         CompletedFocus = 0;
     }
 
+    /// <summary>Puts the cycle back to a saved state (used to undo a discarded run).</summary>
+    public void Restore(Phase phase, int completedFocus)
+    {
+        Current = phase;
+        CompletedFocus = Math.Max(0, completedFocus);
+    }
+
     public static TimeSpan DurationOf(Phase p, AppSettings s) => TimeSpan.FromMinutes(p switch
     {
         Phase.Focus => s.FocusMinutes,

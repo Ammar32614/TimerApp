@@ -33,6 +33,20 @@ public class FocusCycleTests
     }
 
     [Fact]
+    public void Restore_PutsCycleBackExactly()
+    {
+        var c = new FocusCycle();
+        c.Advance(4); c.Advance(4); c.Advance(4); // focus #2 done -> short break
+        var (phase, done) = (c.Current, c.CompletedFocus);
+        c.Reset();
+
+        c.Restore(phase, done);
+
+        Assert.Equal(Phase.ShortBreak, c.Current);
+        Assert.Equal(2, c.CompletedFocus);
+    }
+
+    [Fact]
     public void DurationOf_UsesSettings()
     {
         var s = new AppSettings { FocusMinutes = 50, ShortBreakMinutes = 10, LongBreakMinutes = 30 };

@@ -30,8 +30,8 @@ public partial class StatsPage : UserControl
 
         // Tiles
         int todaySec = StatsCalculator.SecondsOn(sessions, today);
-        TodayValue.Text = TimerPage.FormatDuration(todaySec);
-        TodaySub.Text = todaySec >= goal * 60 ? "Goal reached" : $"{TimerPage.FormatDuration(goal * 60 - todaySec)} to goal";
+        TodayValue.Text = Format.Duration(todaySec);
+        TodaySub.Text = todaySec >= goal * 60 ? "Goal reached" : $"{Format.Duration(goal * 60 - todaySec)} to goal";
 
         int streak = StatsCalculator.Streak(sessions, today);
         StreakValue.Text = streak == 1 ? "1 day" : $"{streak} days";
@@ -40,7 +40,7 @@ public partial class StatsPage : UserControl
         var week = StatsCalculator.Week(sessions, today, id => App.Data.SubjectFor(id).Id);
         int weekSec = week.Sum(d => d.BySubject.Values.Sum());
         int activeDays = week.Count(d => d.BySubject.Values.Sum() > 0);
-        WeekValue.Text = TimerPage.FormatDuration(weekSec);
+        WeekValue.Text = Format.Duration(weekSec);
         WeekSub.Text = activeDays == 1 ? "on 1 day" : $"on {activeDays} days";
 
         BuildBars(week, goal * 60);
@@ -76,7 +76,7 @@ public partial class StatsPage : UserControl
             if (total == 0)
                 stack.Children.Add(new Border { Height = 2, Background = (Brush)FindResource("Raised"), CornerRadius = new CornerRadius(1) });
 
-            var cell = new Grid { Background = Brushes.Transparent, ToolTip = $"{day.ToString("ddd d MMM", CultureInfo.CurrentCulture)}: {TimerPage.FormatDuration(total)}" };
+            var cell = new Grid { Background = Brushes.Transparent, ToolTip = $"{day.ToString("ddd d MMM", CultureInfo.CurrentCulture)}: {Format.Duration(total)}" };
             cell.Children.Add(stack);
             columns.Children.Add(cell);
 
@@ -99,7 +99,7 @@ public partial class StatsPage : UserControl
         };
         line.SetResourceReference(Shape.StrokeProperty, "Muted");
         BarsHost.Children.Add(line);
-        GoalLegend.Text = $"Dashed line: {TimerPage.FormatDuration(goalSec)} goal";
+        GoalLegend.Text = $"Dashed line: {Format.Duration(goalSec)} goal";
     }
 
     private void BuildSubjects(IReadOnlyList<(DateOnly Day, Dictionary<Guid, int> BySubject)> week)
@@ -140,7 +140,7 @@ public partial class StatsPage : UserControl
             track.SizeChanged += (_, e) => fill.Width = e.NewSize.Width * seconds / max;
             Grid.SetColumn(track, 1);
             row.Children.Add(track);
-            var t = new TextBlock { Text = TimerPage.FormatDuration(seconds), Style = (Style)FindResource("Caption"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
+            var t = new TextBlock { Text = Format.Duration(seconds), Style = (Style)FindResource("Caption"), HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center };
             Grid.SetColumn(t, 2);
             row.Children.Add(t);
             SubjectRows.Children.Add(row);
@@ -191,7 +191,7 @@ public partial class StatsPage : UserControl
                 rect.Opacity = LevelOpacity[levels[i]];
             }
             if (day <= today)
-                rect.ToolTip = $"{day.ToString("ddd d MMM", CultureInfo.CurrentCulture)}: {TimerPage.FormatDuration(StatsCalculator.SecondsOn(sessions, day))}";
+                rect.ToolTip = $"{day.ToString("ddd d MMM", CultureInfo.CurrentCulture)}: {Format.Duration(StatsCalculator.SecondsOn(sessions, day))}";
             Grid.SetColumn(rect, 1 + i / 7);
             Grid.SetRow(rect, i % 7);
             Heat.Children.Add(rect);

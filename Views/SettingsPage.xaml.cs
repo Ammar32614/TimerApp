@@ -36,9 +36,133 @@ public partial class SettingsPage : UserControl
         Unloaded += (_, _) => App.DataChanged -= SyncOnTop;
 
         DataPath.Text = App.Store.FilePath;
-        Version.Text = $"Stint {typeof(App).Assembly.GetName().Version?.ToString(3)}";
+        Version.Text = $"Version {AboutPage.AppVersion}";
+        BuildThemes();
+        ShowSoundName();
         BuildSubjects();
     }
+
+    // ---------------- Appearance ----------------
+
+    private void BuildThemes()
+    {
+        Themes.Children.Clear();
+        foreach (var theme in ThemeCatalog.All)
+        {
+            Brush B(string key) => new SolidColorBrush(App.ParseColor(theme[key]));
+            bool selected = theme.Name == App.Theme.Name;
+
+            // A tiny picture of the theme: its background, a ring in its focus colour and its four accents.
+            var preview = new Grid { Height = 54 };
+            preview.Children.Add(new Border { Background = B("BgColor"), CornerRadius = new CornerRadius(8, 8, 0, 0) });
+            var ring = new Controls.ProgressRing
+            {
+                Width = 30, Height = 30, Thickness = 3.5, Progress = 0.7,
+                TrackBrush = B("HairlineColor"), ArcBrush = B("FocusColor"),
+                HorizontalAlignment = HorizontalAlignment.Left, Margin = new Thickness(12, 0, 0, 0),
+            };
+            preview.Children.Add(ring);
+            var dots = new StackPanel { Orientation = Orientation.Vertical, HorizontalAlignment = HorizontalAlignment.Right, VerticalAlignment = VerticalAlignment.Center, Margin = new Thickness(0, 0, 12, 0) };
+            var row1 = new StackPanel { Orientation = Orientation.Horizontal };
+            var row2 = new StackPanel { Orientation = Orientation.Horizontal, Margin = new Thickness(0, 4, 0, 0) };
+            foreach (var (k, r) in new[] { ("FocusColor", row1), ("BreakColor", row1), ("TimerColor", row2), ("StopwatchColor", row2) })
+                r.Children.Add(new System.Windows.Shapes.Ellipse { Width = 8, Height = 8, Fill = B(k), Margin = new Thickness(2, 0, 2, 0) });
+            dots.Children.Add(row1);
+            dots.Children.Add(row2);
+            preview.Children.Add(dots);
+
+            var label = new Border
+            {
+                Background = B("SurfaceColor"), CornerRadius = new CornerRadius(0, 0, 8, 8), Padding = new Thickness(10, 6, 10, 7),
+                Child = new TextBlock { Text = theme.Name, Foreground = B("TextColor"), FontSize = 12, FontWeight = selected ? FontWeights.SemiBold : FontWeights.Normal },
+            };
+            var stack = new StackPanel();
+            stack.Children.Add(preview);
+            stack.Children.Add(label);
+
+            var card = new Border
+            {
+                Child = stack, CornerRadius = new CornerRadius(10), Padding = new Thickness(2),
+                BorderThickness = new Thickness(selected ? 2 : 1),
+            };
+            if (selected) card.SetResourceReference(Border.BorderBrushProperty, "ModeAccent");
+            else card.SetResourceReference(Border.BorderBrushProperty, "Hairline");
+
+            var button = new Button
+            {
+                Content = card, Margin = new Thickness(4), Cursor = Cursors.Hand, ToolTip = theme.Blurb,
+                Template = BareTemplate, FocusVisualStyle = (Style)FindResource("FocusRing"),
+            };
+            AutomationProperties_SetName(button, $"{theme.Name} theme");
+            button.Click += (_, _) =>
+            {
+                if (S.Theme == theme.Name) return;
+                S.Theme = theme.Name;
+                App.ApplyTheme(theme.Name);
+                App.SaveData();
+                BuildThemes();
+            };
+            Themes.Children.Add(button);
+        }
+    }
+
+    /// <summary>A button that is just its content (the card draws its own border).</summary>
+    private static readonly ControlTemplate BareTemplate = CreateBareTemplate();
+
+    private static ControlTemplate CreateBareTemplate()
+    {
+        var t = new ControlTemplate(typeof(Button));
+        t.VisualTree = new FrameworkElementFactory(typeof(ContentPresenter));
+        t.Seal();
+        return t;
+    }
+
+    private static void AutomationProperties_SetName(DependencyObject d, string name) =>
+        System.Windows.Automation.AutomationProperties.SetName(d, name);
+
+    // ---------------- Alarm sound ----------------
+
+    private void ShowSoundName()
+    {
+        bool custom = S.AlarmSoundPath is { } p && File.Exists(p);
+        SoundName.Text = custom ? S.AlarmSoundName ?? Path.GetFileName(S.AlarmSoundPath) : "Windows alarm (default)";
+        DefaultSoundBtn.Visibility = custom ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    private void ChooseSound_Click(object sender, RoutedEventArgs e)
+    {
+        var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose an alarm sound", Filter = SoundLibrary.DialogFilter };
+        if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+        try
+        {
+            var stored = SoundLibrary.Import(dlg.FileName, SoundLibrary.DefaultFolder);
+            S.AlarmSoundPath = stored;
+            S.AlarmSoundName = Path.GetFileName(dlg.FileName);
+            App.SaveData();
+            ShowSoundName();
+            Notifier.PlaySound();
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException)
+        {
+            SoundName.Text = $"Couldn't use that file: {ex.Message}";
+        }
+    }
+
+    private void PreviewSound_Click(object sender, RoutedEventArgs e) => Notifier.PlaySound();
+
+    private void DefaultSound_Click(object sender, RoutedEventArgs e)
+    {
+        if (S.AlarmSoundPath is { } old) SoundLibrary.TryDelete(old);
+        S.AlarmSoundPath = null;
+        S.AlarmSoundName = null;
+        App.SaveData();
+        ShowSoundName();
+    }
+
+    // ---------------- About ----------------
+
+    private void About_Click(object sender, RoutedEventArgs e) =>
+        (Window.GetWindow(this) as MainWindow)?.Navigate(new AboutPage(), "About", child: true);
 
     // ---------------- Numbers ----------------
 

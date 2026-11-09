@@ -27,7 +27,7 @@ public partial class MainWindow : Window
 
         ApplyTopmost();
         RestorePosition();
-        SourceInitialized += (_, _) => WindowEffects.ApplyRoundedCorners(this);
+        SourceInitialized += (_, _) => WindowEffects.ApplyRoundedCorners(this, dark: !App.Theme.IsLight);
         PreviewKeyDown += OnPreviewKeyDown;
         Closing += OnClosing;
     }
@@ -37,9 +37,15 @@ public partial class MainWindow : Window
 
     // ---------------- Navigation ----------------
 
-    public void Navigate(UserControl page, string title)
+    /// <summary>Pages opened from inside another page (About from Settings); Back returns to them.</summary>
+    private readonly Stack<(UserControl Page, string Title)> _parents = new();
+
+    /// <summary>Opens a page. <paramref name="child"/> = opened from the current page, so Back returns there.</summary>
+    public void Navigate(UserControl page, string title, bool child = false)
     {
         if (_mini) ToggleMini();
+        if (child && PageHost.Content is UserControl current) _parents.Push((current, PageTitleText.Text));
+        else if (!child) _parents.Clear();
         PageHost.Content = page;
         PageHost.Visibility = Visibility.Visible;
         PageTitleText.Text = title;
@@ -52,6 +58,7 @@ public partial class MainWindow : Window
 
     public void GoHome()
     {
+        _parents.Clear();
         PageHost.Content = null;
         PageHost.Visibility = Visibility.Collapsed;
         Brand.Visibility = Visibility.Visible;
@@ -66,6 +73,14 @@ public partial class MainWindow : Window
     private void GoBack()
     {
         if (PageHost.Content is LogPage log && log.CloseEditorIfOpen()) return;
+        if (_parents.Count > 0)
+        {
+            var (page, title) = _parents.Pop();
+            // Rebuild rather than re-show: pages unhook their live-update events when unloaded.
+            Navigate((UserControl)Activator.CreateInstance(page.GetType())!, title, child: true);
+            _parents.Pop(); // Navigate(child) pushed the page we're leaving; drop it
+            return;
+        }
         GoHome();
     }
 
@@ -144,6 +159,7 @@ public partial class MainWindow : Window
         }
         if (ctrl && e.Key == Key.L) { Navigate(new LogPage(), "Study log"); e.Handled = true; return; }
         if (ctrl && e.Key == Key.T) { Navigate(new StatsPage(), "Stats"); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.S && !OnSubPage) { _timer.SaveNow(); e.Handled = true; return; }
         if (typing || ctrl || OnSubPage) return;
 
         switch (e.Key)

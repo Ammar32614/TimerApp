@@ -40,6 +40,7 @@ To uninstall, use **Settings → Apps → Installed apps → Stint**. Your study
 - **Focus mode**: Pomodoro-style blocks with short breaks and a long break every 4 blocks. You can change all of these in Settings. The dots under the ring show where you are in the cycle.
 - **Timer**: a plain countdown, with presets from 5 minutes to 1 hour.
 - **Stopwatch**: with lap times.
+- **Save to log any time**: whenever a run has time on it, a **Save to log** button appears in every mode. It records exactly the time so far, so you don't have to finish the full block.
 - **Subjects and descriptions**: tag each session with a colour-coded subject and say what you're working on.
 - **After-session check-in**: rate how focused you were (1–5) and leave a note for next time. You can skip it.
 
@@ -51,18 +52,31 @@ To uninstall, use **Settings → Apps → Installed apps → Stint**. Your study
 - **Stats**: today against your daily goal, your streak, daily bars by subject for the last 7 days, and a 12-week heatmap.
 - **CSV export**: open your whole history in Excel or Google Sheets.
 - **Stays out of the way**:
-  - Windows notifications and a sound when time is up, plus a tray icon.
+  - Windows notifications and a sound when time is up, plus a tray icon. You can pick your own alarm sound (WAV, MP3 or WMA).
   - **Keep on top** and **mini mode** (below).
   - An option to start Stint when you sign in.
 
 <p align="center"><img src="docs/screenshots/mini.png" width="300" alt="Mini mode"></p>
+
+### Themes
+
+Pick one in **Settings → Appearance**. It changes instantly.
+
+| Midnight | Daylight | Paper |
+|---|---|---|
+| <img src="docs/screenshots/theme-midnight.png" width="200"> | <img src="docs/screenshots/theme-daylight.png" width="200"> | <img src="docs/screenshots/theme-paper.png" width="200"> |
+
+| Forest | Ocean | Dusk |
+|---|---|---|
+| <img src="docs/screenshots/theme-forest.png" width="200"> | <img src="docs/screenshots/theme-ocean.png" width="200"> | <img src="docs/screenshots/theme-dusk.png" width="200"> |
 
 ### Keyboard shortcuts
 
 | Key | Action |
 |---|---|
 | `Space` | Start / pause |
-| `R` | Reset. Press again while stopped to restart the focus cycle. |
+| `Ctrl+S` | Save the run to your log |
+| `R` | Discard the run (with Undo). Press again while stopped to restart the focus cycle. |
 | `S` | Skip to the next focus phase |
 | `L` | Lap (stopwatch) |
 | `1` `2` `3` | Focus / Timer / Stopwatch |
@@ -72,7 +86,11 @@ To uninstall, use **Settings → Apps → Installed apps → Stint**. Your study
 
 ### What counts as study time
 
-Focus blocks, timer runs and stopwatch runs are logged; breaks aren't. If you reset or skip a run after at least a minute, the time so far is still logged. A session counts towards the day it started on.
+- A focus block or timer that runs to the end is logged automatically.
+- At any point you can press **Save to log** (or `Ctrl+S`) to log the time so far. In Focus mode this ends the block early and moves on to the break.
+- **Reset** discards the run. If that was a mistake, press **Undo** within a few seconds.
+- If you close Stint mid-run, the run is still logged as long as it's at least a minute long.
+- Breaks are never logged, and a session counts towards the day it started on.
 
 ## Your data
 

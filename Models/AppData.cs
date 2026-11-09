@@ -46,6 +46,7 @@ public class AppData
         st.LongBreakMinutes = Math.Clamp(st.LongBreakMinutes, 1, 90);
         st.LongBreakEvery = Math.Clamp(st.LongBreakEvery, 1, 12);
         st.DailyGoalMinutes = Math.Clamp(st.DailyGoalMinutes, 5, 1440);
+        st.Theme = Services.ThemeCatalog.Get(st.Theme).Name;
         st.TimerSeconds = Math.Clamp(st.TimerSeconds, 0, 99 * 3600 + 59 * 60 + 59);
     }
 

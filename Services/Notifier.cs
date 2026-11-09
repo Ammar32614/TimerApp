@@ -49,7 +49,38 @@ public sealed class Notifier : IDisposable
         if (playSound) PlaySound();
     }
 
+    /// <summary>Plays the user's chosen alarm if there is one, otherwise the Windows alarm.</summary>
     public static void PlaySound()
+    {
+        var custom = System.Windows.Application.Current is TimerApp.App ? TimerApp.App.Data?.Settings.AlarmSoundPath : null;
+        if (custom != null && File.Exists(custom) && PlayCustom(custom)) return;
+        PlayDefault();
+    }
+
+    /// <summary>WPF's MediaPlayer handles MP3/WMA as well as WAV. Must run on the UI thread.</summary>
+    private static bool PlayCustom(string path)
+    {
+        try
+        {
+            if (_media == null)
+            {
+                _media = new System.Windows.Media.MediaPlayer();
+                _media.MediaFailed += (_, _) => PlayDefault(); // unreadable/corrupt file: still make a sound
+            }
+            _media.Stop();
+            _media.Open(new Uri(path));
+            _media.Play();
+            return true;
+        }
+        catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or UriFormatException)
+        {
+            return false;
+        }
+    }
+
+    private static System.Windows.Media.MediaPlayer? _media;
+
+    private static void PlayDefault()
     {
         try
         {
@@ -75,5 +106,7 @@ public sealed class Notifier : IDisposable
         if (!ReferenceEquals(icon, System.Drawing.SystemIcons.Application)) icon?.Dispose();
         _player?.Dispose();
         _player = null;
+        _media?.Close();
+        _media = null;
     }
 }

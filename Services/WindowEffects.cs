@@ -14,14 +14,14 @@ public static class WindowEffects
     private static extern int DwmSetWindowAttribute(IntPtr hwnd, int attr, ref int value, int size);
 
     /// <summary>Win11 rounded corners + dark frame. Silently does nothing on older Windows.</summary>
-    public static void ApplyRoundedCorners(Window window)
+    public static void ApplyRoundedCorners(Window window, bool dark = true)
     {
         var hwnd = new WindowInteropHelper(window).EnsureHandle();
-        int round = DWMWCP_ROUND, dark = 1;
+        int round = DWMWCP_ROUND, darkFlag = dark ? 1 : 0;
         try
         {
             DwmSetWindowAttribute(hwnd, DWMWA_WINDOW_CORNER_PREFERENCE, ref round, sizeof(int));
-            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref dark, sizeof(int));
+            DwmSetWindowAttribute(hwnd, DWMWA_USE_IMMERSIVE_DARK_MODE, ref darkFlag, sizeof(int));
         }
         catch (DllNotFoundException) { }
         catch (EntryPointNotFoundException) { }

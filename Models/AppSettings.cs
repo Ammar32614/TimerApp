@@ -13,6 +13,11 @@ public class AppSettings
     public bool SoundOn { get; set; } = true;
     public int TimerSeconds { get; set; } = 600;
     public Guid LastSubjectId { get; set; } = Subject.GeneralId;
+    public string Theme { get; set; } = "Midnight";
+    /// <summary>Stint's own copy of a custom alarm (null = Windows default alarm).</summary>
+    public string? AlarmSoundPath { get; set; }
+    /// <summary>The file name the user picked, for display.</summary>
+    public string? AlarmSoundName { get; set; }
     public double? WindowLeft { get; set; }
     public double? WindowTop { get; set; }
 }

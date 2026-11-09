@@ -47,6 +47,7 @@ public partial class App : Application
         // STINT_DATA lets you point the app at a different file (demo data, testing).
         Store = new DataStore(Environment.GetEnvironmentVariable("STINT_DATA") is { Length: > 0 } p ? p : DataStore.DefaultPath);
         Data = Store.Load();
+        ApplyTheme(Data.Settings.Theme);
         Notifier = new Notifier();
 
         MainWindow = new MainWindow();
@@ -121,6 +122,37 @@ public partial class App : Application
     }
 
     public static Color ColorOf(string key) => (Color)Current.Resources[key];
+
+    /// <summary>The theme currently applied.</summary>
+    public static ThemeDef Theme { get; private set; } = ThemeCatalog.All[0];
+
+    /// <summary>Raised after a theme is applied, for anything that baked colours into code.</summary>
+    public static event Action? ThemeChanged;
+
+    private static readonly Dictionary<string, string> BrushFor = new()
+    {
+        ["BgColor"] = "Bg", ["SurfaceColor"] = "Surface", ["RaisedColor"] = "Raised", ["TextColor"] = "Text",
+        ["MutedColor"] = "Muted", ["HairlineColor"] = "Hairline", ["StrongColor"] = "Strong",
+        ["ScrimColor"] = "Scrim", ["OnAccentColor"] = "OnAccent", ["FocusColor"] = "FocusBrush",
+    };
+
+    /// <summary>
+    /// Swaps every theme colour/brush resource. Top-level entries override the defaults in Theme.xaml,
+    /// and everything references them via DynamicResource, so open screens repaint immediately.
+    /// </summary>
+    public static void ApplyTheme(string? name)
+    {
+        Theme = ThemeCatalog.Get(name);
+        var res = Current.Resources;
+        foreach (var key in ThemeCatalog.Keys)
+        {
+            var c = ParseColor(Theme[key]);
+            res[key] = c;
+            if (BrushFor.TryGetValue(key, out var brushKey)) res[brushKey] = new SolidColorBrush(c);
+        }
+        if (Current.MainWindow != null) WindowEffects.ApplyRoundedCorners(Current.MainWindow, dark: !Theme.IsLight);
+        ThemeChanged?.Invoke();
+    }
 
     public static Color ParseColor(string hex)
     {

@@ -43,7 +43,7 @@ public partial class LogPage : UserControl
 
         var today = DateOnly.FromDateTime(DateTime.Now);
         int week = StatsCalculator.Week(sessions, today).Sum(d => d.BySubject.Values.Sum());
-        Summary.Text = sessions.Count == 0 ? "" : $"Last 7 days: {TimerPage.FormatDuration(week)}";
+        Summary.Text = sessions.Count == 0 ? "" : $"Last 7 days: {Format.Duration(week)}";
 
         foreach (var day in sessions.GroupBy(s => DateOnly.FromDateTime(s.Start)).OrderByDescending(g => g.Key))
         {
@@ -51,7 +51,7 @@ public partial class LogPage : UserControl
             header.Children.Add(new TextBlock { Text = DayLabel(day.Key, today), FontWeight = FontWeights.SemiBold, FontSize = 13 });
             header.Children.Add(new TextBlock
             {
-                Text = TimerPage.FormatDuration(day.Sum(s => s.Seconds)),
+                Text = Format.Duration(day.Sum(s => s.Seconds)),
                 Style = (Style)FindResource("Caption"),
                 HorizontalAlignment = HorizontalAlignment.Right,
             });
@@ -108,7 +108,7 @@ public partial class LogPage : UserControl
         var info = new StackPanel { VerticalAlignment = VerticalAlignment.Top, Margin = new Thickness(8, 0, 0, 0) };
         info.Children.Add(new TextBlock
         {
-            Text = TimerPage.FormatDuration(Math.Max(60, s.Seconds)), FontSize = 13,
+            Text = Format.Duration(s.Seconds), FontSize = 13,
             HorizontalAlignment = HorizontalAlignment.Right,
         });
         if (s.Rating > 0)

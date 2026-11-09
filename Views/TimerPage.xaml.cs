@@ -33,6 +33,16 @@ public partial class TimerPage : UserControl
     private Session? _sheetSession;
     private bool _flashError;
 
+    /// <summary>Time from before an undo restored the run (Stopwatch can't be seeded with a value).</summary>
+    private TimeSpan _carried;
+    private TimeSpan Elapsed => _carried + _clock.Elapsed;
+
+    /// <summary>Everything needed to bring back a run that Reset/Skip discarded.</summary>
+    private sealed record RunSnapshot(SessionMode Mode, Phase Phase, int CompletedFocus, TimeSpan Elapsed,
+        DateTime? RunStart, TimeSpan? Target, List<string> Laps, TimeSpan LastLap);
+    private RunSnapshot? _discarded;
+    private readonly DispatcherTimer _undoTimer = new() { Interval = TimeSpan.FromSeconds(6) };
+
     /// <summary>Raised on every visible change, so the mini view can mirror the state.</summary>
     public event Action? StateChanged;
 
@@ -46,7 +56,8 @@ public partial class TimerPage : UserControl
             var b = new Button
             {
                 Style = (Style)FindResource("ChipButton"),
-                Content = m < 60 ? $"{m} min" : "1 hour",
+                Content = m < 60 ? $"{m}m" : "1h",
+                ToolTip = m < 60 ? $"{m} minutes" : "1 hour",
                 Margin = new Thickness(3),
                 Tag = m,
             };
@@ -64,6 +75,14 @@ public partial class TimerPage : UserControl
         SetTimerInputs(settings.TimerSeconds);
 
         App.DataChanged += OnDataChanged;
+        App.ThemeChanged += () =>
+        {
+            _accentKey = "";          // re-pick the accent from the new theme
+            _dotsKey = null;          // repaint dots
+            LapsList.Items.Clear();   // lap rows hold theme brushes
+            Render();
+        };
+        _undoTimer.Tick += (_, _) => HideUndo();
         ClearRun();
         RefreshToday();
         Render();
@@ -73,7 +92,7 @@ public partial class TimerPage : UserControl
 
     public SessionMode Mode => _mode;
     public bool IsRunning => _clock.IsRunning;
-    public bool HasActiveRun => _clock.Elapsed > TimeSpan.Zero;
+    public bool HasActiveRun => Elapsed > TimeSpan.Zero;
     public string TimeDisplay => TimeText.Text;
     public string PhaseDisplay => PhaseText.Text;
     public double RingProgress => Ring.Progress;
@@ -101,20 +120,19 @@ public partial class TimerPage : UserControl
         }
 
         _flashError = false;
+        HideUndo(); // starting something new means the discarded run is gone for good
         _runStart ??= DateTime.Now;
         _clock.Start();
         _tick.Start();
         Render();
     }
 
+    /// <summary>Discards the current run (with Undo). Pressed again while idle in Focus, restarts the cycle.</summary>
     public void ResetCurrent()
     {
         if (HasActiveRun)
         {
-            var elapsed = _clock.Elapsed;
-            _clock.Stop();
-            _tick.Stop();
-            if (IsStudyPhase && SessionRules.ShouldLog(elapsed)) Log(elapsed);
+            DiscardWithUndo();
         }
         else if (_mode == SessionMode.Focus)
         {
@@ -131,22 +149,79 @@ public partial class TimerPage : UserControl
         switch (_mode)
         {
             case SessionMode.Stopwatch when _clock.IsRunning:
-                var total = _clock.Elapsed;
+                var total = Elapsed;
                 _laps.Insert(0, $"Lap {_laps.Count + 1}|{FormatStopwatch(total - _lastLap)}|{FormatStopwatch(total)}");
                 _lastLap = total;
                 Render();
                 break;
             case SessionMode.Focus:
-                var elapsed = _clock.Elapsed;
+                // Skipping doesn't log; "Save to log" is the way to keep a partial block.
+                if (HasActiveRun && IsStudyPhase) DiscardWithUndo();
                 _clock.Stop();
                 _tick.Stop();
-                if (IsStudyPhase && SessionRules.ShouldLog(elapsed)) Log(elapsed);
                 _cycle.Advance(App.Data.Settings.LongBreakEvery);
                 ClearRun();
                 Render();
                 break;
         }
     }
+
+    /// <summary>Stops the current study run and logs exactly the time so far.</summary>
+    public void SaveNow()
+    {
+        if (!HasActiveRun || !IsStudyPhase) return;
+        var elapsed = Elapsed;
+        _clock.Stop();
+        _tick.Stop();
+        HideUndo();
+        Log(elapsed); // opens the rating/note sheet
+        if (_mode == SessionMode.Focus) _cycle.Advance(App.Data.Settings.LongBreakEvery); // block ended early
+        _laps.Clear();
+        _lastLap = TimeSpan.Zero;
+        ClearRun();
+        Render();
+    }
+
+    private void DiscardWithUndo()
+    {
+        _clock.Stop();
+        _tick.Stop();
+        _discarded = new RunSnapshot(_mode, _cycle.Current, _cycle.CompletedFocus, Elapsed, _runStart, _target,
+            [.. _laps], _lastLap);
+        UndoText.Text = $"Discarded {Format.Spoken((int)_discarded.Elapsed.TotalSeconds)}";
+        UndoBar.Visibility = Visibility.Visible;
+        _undoTimer.Stop();
+        _undoTimer.Start();
+    }
+
+    private void HideUndo()
+    {
+        _undoTimer.Stop();
+        _discarded = null;
+        UndoBar.Visibility = Visibility.Collapsed;
+    }
+
+    /// <summary>Brings back the discarded run, paused, exactly where it was.</summary>
+    private void UndoDiscard()
+    {
+        if (_discarded is not { } d || HasActiveRun) { HideUndo(); return; }
+        _mode = d.Mode;
+        (d.Mode switch { SessionMode.Focus => FocusTab, SessionMode.Timer => TimerTab, _ => StopwatchTab }).IsChecked = true;
+        _cycle.Restore(d.Phase, d.CompletedFocus);
+        _clock.Reset();
+        _carried = d.Elapsed;
+        _runStart = d.RunStart;
+        _target = d.Target;
+        _laps.Clear();
+        _laps.AddRange(d.Laps);
+        _lastLap = d.LastLap;
+        LapsList.Items.Clear();
+        HideUndo();
+        Render();
+    }
+
+    private void Undo_Click(object sender, RoutedEventArgs e) => UndoDiscard();
+    private void Save_Click(object sender, RoutedEventArgs e) => SaveNow();
 
     public void SetMode(SessionMode mode)
     {
@@ -163,8 +238,8 @@ public partial class TimerPage : UserControl
     public void FlushOnExit()
     {
         if (_sheetSession != null) SaveSheet(skip: false);
-        if (HasActiveRun && IsStudyPhase && SessionRules.ShouldLog(_clock.Elapsed))
-            Log(_clock.Elapsed, showSheet: false);
+        if (HasActiveRun && IsStudyPhase && SessionRules.ShouldLog(Elapsed))
+            Log(Elapsed, showSheet: false);
     }
 
     public bool CloseSheetIfOpen()
@@ -181,6 +256,7 @@ public partial class TimerPage : UserControl
     private void ClearRun()
     {
         _clock.Reset();
+        _carried = TimeSpan.Zero;
         _runStart = null;
         _target = _mode switch
         {
@@ -192,7 +268,7 @@ public partial class TimerPage : UserControl
 
     private void OnTick()
     {
-        if (_target is { } t && _clock.Elapsed >= t) Complete(t);
+        if (_target is { } t && Elapsed >= t) Complete(t);
         else Render();
     }
 
@@ -215,7 +291,7 @@ public partial class TimerPage : UserControl
             App.Notifier.Show(
                 finished == Phase.Focus ? "Focus block done" : "Break's over",
                 finished == Phase.Focus
-                    ? $"{Minutes(duration)} of {subject} logged. Time for a {(next == Phase.LongBreak ? "long" : "short")} break."
+                    ? $"{Format.Spoken((int)duration.TotalSeconds)} of {subject} logged. Time for a {(next == Phase.LongBreak ? "long" : "short")} break."
                     : "Ready for the next focus block?",
                 settings.SoundOn);
             bool auto = next == Phase.Focus ? settings.AutoStartFocus : settings.AutoStartBreaks;
@@ -224,7 +300,7 @@ public partial class TimerPage : UserControl
         else
         {
             ClearRun();
-            App.Notifier.Show("Time's up", $"{Minutes(duration)} of {subject} logged.", settings.SoundOn);
+            App.Notifier.Show("Time's up", $"{Format.Spoken((int)duration.TotalSeconds)} of {subject} logged.", settings.SoundOn);
         }
         Render(); // no Activate(): the toast is enough, don't steal focus from what the user is writing
     }
@@ -249,7 +325,7 @@ public partial class TimerPage : UserControl
     private void Render()
     {
         var settings = App.Data.Settings;
-        var elapsed = _clock.Elapsed;
+        var elapsed = Elapsed;
         bool active = HasActiveRun;
 
         // Time + ring
@@ -314,7 +390,12 @@ public partial class TimerPage : UserControl
                 SideBtn.Visibility = Visibility.Hidden;
                 break;
         }
-        ResetBtn.ToolTip = active ? "Reset (R)" : _mode == SessionMode.Focus ? "Restart cycle (R)" : "Reset (R)";
+        ResetBtn.ToolTip = active ? "Discard this run (R)" : _mode == SessionMode.Focus ? "Restart cycle (R)" : "Reset (R)";
+
+        // Save button: any study run with time on it can be logged right now.
+        bool canSave = active && IsStudyPhase;
+        SaveBtn.Visibility = canSave ? Visibility.Visible : Visibility.Hidden;
+        if (canSave) SaveText.Text = $"Save {Format.Spoken((int)Math.Round(elapsed.TotalSeconds))} to log"; // same rounding as Log()
 
         // Mode switching is locked while a run is in progress, so time is never lost by accident.
         if (active != _tabsLocked)
@@ -343,8 +424,8 @@ public partial class TimerPage : UserControl
         bool runStartedToday = _runStart is null || DateOnly.FromDateTime(_runStart.Value) == _todayDate;
         int live = active && IsStudyPhase && runStartedToday ? (int)elapsed.TotalSeconds : 0;
         int today = _todayLoggedSeconds + live;
-        TodayRun.Text = FormatDuration(today);
-        GoalRun.Text = $" of {FormatDuration(settings.DailyGoalMinutes * 60)}";
+        TodayRun.Text = Format.Duration(today);
+        GoalRun.Text = $" of {Format.Duration(settings.DailyGoalMinutes * 60)}";
         GoalBar.Width = 180 * Math.Min(1, today / (Math.Max(1, settings.DailyGoalMinutes) * 60.0));
 
         StateChanged?.Invoke();
@@ -476,7 +557,7 @@ public partial class TimerPage : UserControl
         if (_sheetSession != null) SaveSheet(skip: false); // keep a half-written note for the previous session
         _sheetSession = s;
         var subject = App.Data.SubjectFor(s.SubjectId).Name;
-        SheetTitle.Text = $"{Minutes(TimeSpan.FromSeconds(s.Seconds))} of {subject} logged";
+        SheetTitle.Text = $"{Format.Spoken(s.Seconds)} of {subject} logged";
         SheetSub.Text = string.IsNullOrEmpty(s.Description) ? "Nice work. Add a quick note if it helps." : s.Description;
         SheetRating.Value = 0;
         SheetNote.Text = "";
@@ -526,15 +607,4 @@ public partial class TimerPage : UserControl
             ? $"{(int)t.TotalHours}:{t.Minutes:00}:{t.Seconds:00}"
             : $"{t.Minutes:00}:{t.Seconds:00}.{t.Milliseconds / 10:00}";
 
-    public static string FormatDuration(int seconds)
-    {
-        int m = seconds / 60;
-        return m < 60 ? $"{m}m" : m % 60 == 0 ? $"{m / 60}h" : $"{m / 60}h {m % 60}m";
-    }
-
-    private static string Minutes(TimeSpan t)
-    {
-        int m = (int)Math.Round(t.TotalMinutes);
-        return m >= 60 ? FormatDuration(m * 60) : $"{Math.Max(1, m)} min";
-    }
 }

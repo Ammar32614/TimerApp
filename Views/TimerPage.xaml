@@ -8,7 +8,7 @@
             <RowDefinition Height="Auto"/>  <!-- mode switch -->
             <RowDefinition Height="Auto"/>  <!-- subject + description -->
             <RowDefinition Height="*"/>     <!-- ring -->
-            <RowDefinition Height="76"/>    <!-- dots / presets / laps -->
+            <RowDefinition Height="68"/>    <!-- dots / presets / laps -->
             <RowDefinition Height="Auto"/>  <!-- controls -->
             <RowDefinition Height="Auto"/>  <!-- today strip -->
         </Grid.RowDefinitions>
@@ -88,7 +88,8 @@
         </Grid>
 
         <!-- Controls -->
-        <Grid Grid.Row="4" HorizontalAlignment="Center" Margin="0,4,0,14">
+        <StackPanel Grid.Row="4" Margin="0,0,0,10">
+        <Grid HorizontalAlignment="Center" Margin="0,0,0,8">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="Auto"/>
                 <ColumnDefinition Width="Auto"/>
@@ -101,6 +102,16 @@
             <Button x:Name="SideBtn" Grid.Column="2" Style="{StaticResource SideRoundButton}" Content="&#xE893;"
                     Click="Side_Click" ToolTip="Skip to next (S)" VerticalAlignment="Center"/>
         </Grid>
+        <!-- Log the run so far, any time (hidden, not collapsed, so the layout doesn't jump) -->
+        <Button x:Name="SaveBtn" Style="{StaticResource ChipButton}" HorizontalAlignment="Center" Height="30"
+                Padding="14,0" Click="Save_Click" Visibility="Hidden" ToolTip="Stop and log the time so far (Ctrl+S)">
+            <StackPanel Orientation="Horizontal">
+                <TextBlock Text="&#xE74E;" FontFamily="{StaticResource IconFont}" FontSize="12" Margin="0,1,8,0"
+                           VerticalAlignment="Center"/>
+                <TextBlock x:Name="SaveText" Text="Save to log" VerticalAlignment="Center"/>
+            </StackPanel>
+        </Button>
+        </StackPanel>
 
         <!-- Today strip -->
         <Border Grid.Row="5" BorderBrush="{DynamicResource Hairline}" BorderThickness="0,1,0,0" Padding="20,12,20,14">
@@ -121,6 +132,16 @@
                 </StackPanel>
                 <TextBlock x:Name="StreakText" Grid.Column="1" FontSize="12" Foreground="{DynamicResource Muted}"
                            VerticalAlignment="Center" ToolTip="Days in a row with study logged"/>
+            </Grid>
+        </Border>
+
+        <!-- Undo for a discarded run; sits over the today strip for a few seconds -->
+        <Border x:Name="UndoBar" Grid.Row="5" Background="{DynamicResource Raised}" Visibility="Collapsed"
+                Padding="20,0,12,0">
+            <Grid>
+                <TextBlock x:Name="UndoText" VerticalAlignment="Center" FontSize="13"/>
+                <Button Content="Undo" Style="{StaticResource GhostButton}" HorizontalAlignment="Right"
+                        VerticalAlignment="Center" Padding="12,4" Click="Undo_Click"/>
             </Grid>
         </Border>
 
