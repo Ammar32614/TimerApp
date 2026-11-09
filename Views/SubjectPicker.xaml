@@ -6,7 +6,7 @@
                 ToolTip="Subject for this session">
             <StackPanel Orientation="Horizontal">
                 <Ellipse x:Name="Dot" Width="8" Height="8" Margin="0,0,7,0" VerticalAlignment="Center"/>
-                <TextBlock x:Name="NameText" Foreground="{StaticResource Text}" MaxWidth="110"
+                <TextBlock x:Name="NameText" Foreground="{DynamicResource Text}" MaxWidth="110"
                            TextTrimming="CharacterEllipsis" VerticalAlignment="Center"/>
                 <TextBlock Text="&#xE70D;" FontFamily="{StaticResource IconFont}" FontSize="9"
                            Margin="7,1,0,0" VerticalAlignment="Center"/>
@@ -14,12 +14,12 @@
         </Button>
         <Popup x:Name="Menu" PlacementTarget="{Binding ElementName=Chip}" Placement="Bottom"
                VerticalOffset="6" StaysOpen="False" AllowsTransparency="True" PopupAnimation="Fade">
-            <Border Background="{StaticResource Raised}" CornerRadius="10" Padding="4" MinWidth="180"
-                    BorderBrush="#3A4150" BorderThickness="1">
+            <Border Background="{DynamicResource Raised}" CornerRadius="10" Padding="4" MinWidth="180"
+                    BorderBrush="{DynamicResource Strong}" BorderThickness="1">
                 <StackPanel>
                     <ItemsControl x:Name="Items"/>
-                    <Border Height="1" Background="{StaticResource Hairline}" Margin="6,4"/>
-                    <Button Style="{StaticResource MenuRowButton}" Click="Manage_Click" Foreground="{StaticResource Muted}">
+                    <Border Height="1" Background="{DynamicResource Hairline}" Margin="6,4"/>
+                    <Button Style="{StaticResource MenuRowButton}" Click="Manage_Click" Foreground="{DynamicResource Muted}">
                         <TextBlock Text="Manage subjects"/>
                     </Button>
                 </StackPanel>

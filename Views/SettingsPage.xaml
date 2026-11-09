@@ -1,7 +1,7 @@
 <UserControl x:Class="TimerApp.Views.SettingsPage"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             Background="{StaticResource Bg}">
+             Background="{DynamicResource Bg}">
     <ScrollViewer VerticalScrollBarVisibility="Auto" Padding="20,0,14,20">
         <StackPanel>
             <TextBlock Text="Focus cycle" Style="{StaticResource SectionTitle}" Margin="0,4,0,8"/>

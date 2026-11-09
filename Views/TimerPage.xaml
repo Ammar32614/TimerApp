@@ -14,7 +14,7 @@
         </Grid.RowDefinitions>
 
         <!-- Mode switch -->
-        <Border Grid.Row="0" Margin="20,6,20,0" Background="{StaticResource Surface}" CornerRadius="10" Padding="3">
+        <Border Grid.Row="0" Margin="20,6,20,0" Background="{DynamicResource Surface}" CornerRadius="10" Padding="3">
             <UniformGrid Columns="3">
                 <RadioButton x:Name="FocusTab" Style="{StaticResource Segment}" GroupName="Mode" IsChecked="True"
                              Content="Focus" Checked="Mode_Checked" ToolTip="Focus blocks with breaks (1)"/>
@@ -39,7 +39,7 @@
 
         <!-- Ring -->
         <Grid Grid.Row="2" Width="236" Height="236" VerticalAlignment="Center" Margin="0,8,0,0">
-            <c:ProgressRing x:Name="Track" TrackBrush="{StaticResource Hairline}" Thickness="12" Progress="0"/>
+            <c:ProgressRing x:Name="Track" TrackBrush="{DynamicResource Hairline}" Thickness="12" Progress="0"/>
             <c:ProgressRing x:Name="Glow" ArcBrush="{DynamicResource ModeAccent}" Thickness="12" Opacity="0.55"
                             IsHitTestVisible="False">
                 <c:ProgressRing.Effect>
@@ -50,7 +50,7 @@
 
             <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
                 <TextBlock x:Name="TimeText" Text="25:00" FontFamily="{StaticResource DisplayFont}" FontWeight="Light"
-                           FontSize="54" Foreground="{StaticResource Text}" HorizontalAlignment="Center"
+                           FontSize="54" Foreground="{DynamicResource Text}" HorizontalAlignment="Center"
                            Typography.NumeralAlignment="Tabular"/>
 
                 <!-- Timer mode: editable h:m:s while idle -->
@@ -60,19 +60,19 @@
                              HorizontalContentAlignment="Center" MaxLength="2" ToolTip="Hours"
                              FontFamily="{StaticResource DisplayFont}" PreviewTextInput="Digits_Only"
                              LostFocus="TimerInput_LostFocus" GotKeyboardFocus="Select_All"/>
-                    <TextBlock Text=":" FontSize="24" Foreground="{StaticResource Muted}" Margin="3,0" VerticalAlignment="Center"/>
+                    <TextBlock Text=":" FontSize="24" Foreground="{DynamicResource Muted}" Margin="3,0" VerticalAlignment="Center"/>
                     <TextBox x:Name="TmM" Style="{StaticResource FieldBox}" Width="50" FontSize="24" Padding="2,4"
                              HorizontalContentAlignment="Center" MaxLength="2" ToolTip="Minutes"
                              FontFamily="{StaticResource DisplayFont}" PreviewTextInput="Digits_Only"
                              LostFocus="TimerInput_LostFocus" GotKeyboardFocus="Select_All"/>
-                    <TextBlock Text=":" FontSize="24" Foreground="{StaticResource Muted}" Margin="3,0" VerticalAlignment="Center"/>
+                    <TextBlock Text=":" FontSize="24" Foreground="{DynamicResource Muted}" Margin="3,0" VerticalAlignment="Center"/>
                     <TextBox x:Name="TmS" Style="{StaticResource FieldBox}" Width="50" FontSize="24" Padding="2,4"
                              HorizontalContentAlignment="Center" MaxLength="2" ToolTip="Seconds"
                              FontFamily="{StaticResource DisplayFont}" PreviewTextInput="Digits_Only"
                              LostFocus="TimerInput_LostFocus" GotKeyboardFocus="Select_All"/>
                 </StackPanel>
 
-                <TextBlock x:Name="PhaseText" Text="Focus" FontSize="13" Foreground="{StaticResource Muted}"
+                <TextBlock x:Name="PhaseText" Text="Focus" FontSize="13" Foreground="{DynamicResource Muted}"
                            HorizontalAlignment="Center" Margin="0,2,0,0"/>
             </StackPanel>
         </Grid>
@@ -103,7 +103,7 @@
         </Grid>
 
         <!-- Today strip -->
-        <Border Grid.Row="5" BorderBrush="{StaticResource Hairline}" BorderThickness="0,1,0,0" Padding="20,12,20,14">
+        <Border Grid.Row="5" BorderBrush="{DynamicResource Hairline}" BorderThickness="0,1,0,0" Padding="20,12,20,14">
             <Grid>
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="*"/>
@@ -111,24 +111,24 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel>
                     <TextBlock FontSize="12">
-                        <Run Text="Today " Foreground="{StaticResource Muted}"/><Run x:Name="TodayRun" Text="0m" Foreground="{StaticResource Text}" FontWeight="SemiBold"/><Run x:Name="GoalRun" Text=" of 2h" Foreground="{StaticResource Muted}"/>
+                        <Run Text="Today " Foreground="{DynamicResource Muted}"/><Run x:Name="TodayRun" Text="0m" Foreground="{DynamicResource Text}" FontWeight="SemiBold"/><Run x:Name="GoalRun" Text=" of 2h" Foreground="{DynamicResource Muted}"/>
                     </TextBlock>
                     <Grid Height="4" Margin="0,7,0,0" MaxWidth="180" HorizontalAlignment="Left" Width="180">
-                        <Border Background="{StaticResource Raised}" CornerRadius="2"/>
-                        <Border x:Name="GoalBar" Background="{StaticResource FocusBrush}" CornerRadius="2"
+                        <Border Background="{DynamicResource Raised}" CornerRadius="2"/>
+                        <Border x:Name="GoalBar" Background="{DynamicResource FocusBrush}" CornerRadius="2"
                                 HorizontalAlignment="Left" Width="0"/>
                     </Grid>
                 </StackPanel>
-                <TextBlock x:Name="StreakText" Grid.Column="1" FontSize="12" Foreground="{StaticResource Muted}"
+                <TextBlock x:Name="StreakText" Grid.Column="1" FontSize="12" Foreground="{DynamicResource Muted}"
                            VerticalAlignment="Center" ToolTip="Days in a row with study logged"/>
             </Grid>
         </Border>
 
         <!-- After-session sheet -->
         <Grid x:Name="Sheet" Grid.RowSpan="6" Visibility="Collapsed">
-            <Border Background="#B314161C" MouseDown="SheetBackdrop_MouseDown"/>
-            <Border x:Name="SheetCard" VerticalAlignment="Bottom" Background="{StaticResource Surface}"
-                    CornerRadius="16,16,0,0" Padding="20,18,20,20" BorderBrush="{StaticResource Hairline}"
+            <Border Background="{DynamicResource Scrim}" MouseDown="SheetBackdrop_MouseDown"/>
+            <Border x:Name="SheetCard" VerticalAlignment="Bottom" Background="{DynamicResource Surface}"
+                    CornerRadius="16,16,0,0" Padding="20,18,20,20" BorderBrush="{DynamicResource Hairline}"
                     BorderThickness="0,1,0,0">
                 <Border.RenderTransform>
                     <TranslateTransform x:Name="SheetShift"/>

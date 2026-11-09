@@ -3,8 +3,8 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:c="clr-namespace:TimerApp.Controls"
         Title="Stint" Width="380" Height="640" ResizeMode="CanMinimize"
-        WindowStyle="None" Background="{StaticResource Bg}"
-        FontFamily="{StaticResource TextFont}" Foreground="{StaticResource Text}"
+        WindowStyle="None" Background="{DynamicResource Bg}"
+        FontFamily="{StaticResource TextFont}" Foreground="{DynamicResource Text}"
         TextOptions.TextFormattingMode="Display" UseLayoutRounding="True"
         Icon="pack://application:,,,/Assets/stint.ico"
         WindowStartupLocation="Manual">
@@ -30,7 +30,7 @@
 
                 <StackPanel x:Name="Brand" Orientation="Horizontal" VerticalAlignment="Center" Margin="4,0,0,0">
                     <Grid Width="14" Height="14" Margin="0,0,8,0">
-                        <c:ProgressRing TrackBrush="{StaticResource Hairline}" ArcBrush="{DynamicResource ModeAccent}"
+                        <c:ProgressRing TrackBrush="{DynamicResource Hairline}" ArcBrush="{DynamicResource ModeAccent}"
                                         Thickness="2.5" Progress="0.75"/>
                     </Grid>
                     <TextBlock Text="Stint" FontFamily="{StaticResource DisplayFont}" FontWeight="SemiBold" FontSize="13"/>
@@ -53,7 +53,7 @@
                     </Button>
                     <Button x:Name="SettingsBtn" Style="{StaticResource IconButton}" Content="&#xE713;" Click="Settings_Click"
                             ToolTip="Settings" WindowChrome.IsHitTestVisibleInChrome="True"/>
-                    <Border Width="1" Height="16" Background="{StaticResource Hairline}" Margin="6,0"/>
+                    <Border Width="1" Height="16" Background="{DynamicResource Hairline}" Margin="6,0"/>
                     <Button x:Name="PinBtn" Style="{StaticResource CaptionButton}" Content="&#xE718;" Click="Pin_Click"
                             ToolTip="Keep on top" WindowChrome.IsHitTestVisibleInChrome="True"/>
                     <Button Style="{StaticResource CaptionButton}" Content="&#xE73F;" Click="Mini_Click"
@@ -68,7 +68,7 @@
             <!-- Timer page stays alive underneath so it keeps running while other pages are open -->
             <ContentControl x:Name="HomeHost" Grid.Row="1" Focusable="False"/>
             <ContentControl x:Name="PageHost" Grid.Row="1" Focusable="False" Visibility="Collapsed"
-                            Background="{StaticResource Bg}"/>
+                            Background="{DynamicResource Bg}"/>
         </Grid>
 
         <!-- ================= Mini view ================= -->
@@ -80,7 +80,7 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
             <Grid Width="40" Height="40" VerticalAlignment="Center">
-                <c:ProgressRing TrackBrush="{StaticResource Hairline}" Thickness="4" Progress="0"/>
+                <c:ProgressRing TrackBrush="{DynamicResource Hairline}" Thickness="4" Progress="0"/>
                 <c:ProgressRing x:Name="MiniRing" ArcBrush="{DynamicResource ModeAccent}" Thickness="4"/>
             </Grid>
             <StackPanel Grid.Column="1" VerticalAlignment="Center" Margin="12,0,0,0">
