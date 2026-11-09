@@ -1,0 +1,110 @@
+﻿<Window x:Class="TimerApp.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Timer &amp; Stopwatch" Height="480" Width="360"
+        MinHeight="440" MinWidth="320"
+        Background="#1E1E24" WindowStartupLocation="CenterScreen">
+    <Window.Resources>
+        <SolidColorBrush x:Key="Fg" Color="#F2F2F2"/>
+        <SolidColorBrush x:Key="Accent" Color="#4C9AFF"/>
+
+        <Style TargetType="Button">
+            <Setter Property="Foreground" Value="White"/>
+            <Setter Property="Background" Value="#3A3A44"/>
+            <Setter Property="FontSize" Value="16"/>
+            <Setter Property="Margin" Value="6"/>
+            <Setter Property="Padding" Value="18,8"/>
+            <Setter Property="BorderThickness" Value="0"/>
+            <Setter Property="Cursor" Value="Hand"/>
+            <Setter Property="Template">
+                <Setter.Value>
+                    <ControlTemplate TargetType="Button">
+                        <Border x:Name="bd" Background="{TemplateBinding Background}" CornerRadius="8"
+                                Padding="{TemplateBinding Padding}">
+                            <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                        </Border>
+                        <ControlTemplate.Triggers>
+                            <Trigger Property="IsMouseOver" Value="True">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.85"/>
+                            </Trigger>
+                            <Trigger Property="IsEnabled" Value="False">
+                                <Setter TargetName="bd" Property="Opacity" Value="0.4"/>
+                            </Trigger>
+                        </ControlTemplate.Triggers>
+                    </ControlTemplate>
+                </Setter.Value>
+            </Setter>
+        </Style>
+
+        <Style x:Key="BigTime" TargetType="TextBlock">
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="FontSize" Value="54"/>
+            <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+            <Setter Property="HorizontalAlignment" Value="Center"/>
+            <Setter Property="Margin" Value="0,24,0,16"/>
+        </Style>
+
+        <Style x:Key="SpinBox" TargetType="TextBox">
+            <Setter Property="Width" Value="64"/>
+            <Setter Property="FontSize" Value="24"/>
+            <Setter Property="FontFamily" Value="Consolas"/>
+            <Setter Property="Background" Value="#2B2B33"/>
+            <Setter Property="Foreground" Value="{StaticResource Fg}"/>
+            <Setter Property="CaretBrush" Value="White"/>
+            <Setter Property="BorderBrush" Value="#44444F"/>
+            <Setter Property="HorizontalContentAlignment" Value="Center"/>
+            <Setter Property="Padding" Value="4"/>
+            <Setter Property="Margin" Value="4,0"/>
+            <Setter Property="MaxLength" Value="2"/>
+        </Style>
+    </Window.Resources>
+
+    <TabControl Background="#1E1E24" BorderThickness="0" Margin="8">
+        <!-- ============ STOPWATCH ============ -->
+        <TabItem Header="Stopwatch" FontSize="14">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="Auto"/>
+                    <RowDefinition Height="*"/>
+                </Grid.RowDefinitions>
+
+                <TextBlock x:Name="SwDisplay" Grid.Row="0" Text="00:00:00.00" Style="{StaticResource BigTime}"/>
+
+                <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="SwStartBtn" Content="Start" Background="#2E8B57" Click="SwStart_Click" MinWidth="80"/>
+                    <Button x:Name="SwLapBtn" Content="Lap" Click="SwLap_Click" IsEnabled="False" MinWidth="80"/>
+                    <Button x:Name="SwResetBtn" Content="Reset" Click="SwReset_Click" MinWidth="80"/>
+                </StackPanel>
+
+                <ListBox x:Name="LapList" Grid.Row="2" Margin="8,16,8,8"
+                         Background="#25252B" BorderThickness="0"
+                         Foreground="{StaticResource Fg}" FontFamily="Consolas" FontSize="15"/>
+            </Grid>
+        </TabItem>
+
+        <!-- ============ TIMER ============ -->
+        <TabItem Header="Timer" FontSize="14">
+            <StackPanel>
+                <TextBlock x:Name="TmDisplay" Text="00:05:00" Style="{StaticResource BigTime}"/>
+
+                <StackPanel x:Name="TmInputPanel" Orientation="Horizontal" HorizontalAlignment="Center" Margin="0,0,0,16">
+                    <TextBox x:Name="TmH" Text="0" Style="{StaticResource SpinBox}" PreviewTextInput="Digits_Only"/>
+                    <TextBlock Text=":" Foreground="{StaticResource Fg}" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TmM" Text="5" Style="{StaticResource SpinBox}" PreviewTextInput="Digits_Only"/>
+                    <TextBlock Text=":" Foreground="{StaticResource Fg}" FontSize="24" VerticalAlignment="Center"/>
+                    <TextBox x:Name="TmS" Text="0" Style="{StaticResource SpinBox}" PreviewTextInput="Digits_Only"/>
+                </StackPanel>
+
+                <StackPanel Orientation="Horizontal" HorizontalAlignment="Center">
+                    <Button x:Name="TmStartBtn" Content="Start" Background="#2E8B57" Click="TmStart_Click" MinWidth="80"/>
+                    <Button x:Name="TmResetBtn" Content="Reset" Click="TmReset_Click" MinWidth="80"/>
+                </StackPanel>
+
+                <CheckBox x:Name="TopmostChk" Content="Always on top" Foreground="{StaticResource Fg}"
+                          HorizontalAlignment="Center" Margin="0,24,0,0"
+                          Checked="Topmost_Changed" Unchecked="Topmost_Changed"/>
+            </StackPanel>
+        </TabItem>
+    </TabControl>
+</Window>
