@@ -1,13 +1,94 @@
-﻿using System.Configuration;
-using System.Data;
-using System.Windows;
+﻿using System.Windows;
+using System.Windows.Media;
+using System.Windows.Media.Animation;
+using TimerApp.Models;
+using TimerApp.Services;
 
 namespace TimerApp;
 
-/// <summary>
-/// Interaction logic for App.xaml
-/// </summary>
 public partial class App : Application
 {
-}
+    public static DataStore Store { get; private set; } = null!;
+    public static AppData Data { get; private set; } = null!;
+    public static Notifier Notifier { get; private set; } = null!;
 
+    /// <summary>The current mode's accent brush (replaced on every mode change; prefer DynamicResource ModeAccent).</summary>
+    public static SolidColorBrush Accent { get; private set; } = new((Color)ColorConverter.ConvertFromString("#F5B14C"));
+
+    /// <summary>Raised whenever sessions, subjects or settings change, so open pages can refresh.</summary>
+    public static event Action? DataChanged;
+
+    protected override void OnStartup(StartupEventArgs e)
+    {
+        base.OnStartup(e);
+        Resources["ModeAccent"] = Accent;
+        DispatcherUnhandledException += OnUnhandledException;
+
+        // STINT_DATA lets you point the app at a different file (demo data, testing).
+        Store = new DataStore(Environment.GetEnvironmentVariable("STINT_DATA") is { Length: > 0 } p ? p : DataStore.DefaultPath);
+        Data = Store.Load();
+        Notifier = new Notifier();
+
+        MainWindow = new MainWindow();
+        MainWindow.Show();
+    }
+
+    /// <summary>Last-resort handler: keep the log safe, write a crash file, tell the user where it is.</summary>
+    private void OnUnhandledException(object sender, System.Windows.Threading.DispatcherUnhandledExceptionEventArgs e)
+    {
+        string dir = System.IO.Path.GetDirectoryName(Store?.FilePath ?? DataStore.DefaultPath)!;
+        string file = System.IO.Path.Combine(dir, "crash.log");
+        try
+        {
+            System.IO.Directory.CreateDirectory(dir);
+            System.IO.File.AppendAllText(file, $"[{DateTime.Now:u}] {e.Exception}\n\n");
+            if (Data != null) Store!.Save(Data);
+        }
+        catch (Exception) { /* nothing more we can do */ }
+        MessageBox.Show($"Stint hit an unexpected problem and needs to close. Your study log is saved.\n\nDetails were written to:\n{file}",
+            "Stint", MessageBoxButton.OK, MessageBoxImage.Error);
+        e.Handled = true;
+        Shutdown(1);
+    }
+
+    protected override void OnExit(ExitEventArgs e)
+    {
+        Notifier?.Dispose();
+        base.OnExit(e);
+    }
+
+    public static void SaveData()
+    {
+        try { Store.Save(Data); }
+        catch (Exception ex) when (ex is System.IO.IOException or UnauthorizedAccessException)
+        {
+            Notifier.Show("Couldn't save your study log", ex.Message, playSound: false);
+        }
+        DataChanged?.Invoke();
+    }
+
+    /// <summary>
+    /// Swaps in a fresh accent brush. Application resources freeze plain brushes, so each change
+    /// gets a new brush whose animation starts before it is stored (animated brushes can't be frozen).
+    /// </summary>
+    public static void SetAccent(Color color, bool animate = true)
+    {
+        var from = Accent.Color;
+        var brush = new SolidColorBrush(animate ? from : color);
+        if (animate && SystemParameters.ClientAreaAnimation && from != color)
+            brush.BeginAnimation(SolidColorBrush.ColorProperty,
+                new ColorAnimation(from, color, TimeSpan.FromMilliseconds(350)) { EasingFunction = new QuadraticEase() });
+        else
+            brush.Color = color;
+        Accent = brush;
+        Current.Resources["ModeAccent"] = brush;
+    }
+
+    public static Color ColorOf(string key) => (Color)Current.Resources[key];
+
+    public static Color ParseColor(string hex)
+    {
+        try { return (Color)ColorConverter.ConvertFromString(hex); }
+        catch (FormatException) { return Colors.Gray; }
+    }
+}

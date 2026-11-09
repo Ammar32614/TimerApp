@@ -1,155 +1,205 @@
-﻿using System;
-using System.Diagnostics;
-using System.Media;
-using System.Text.RegularExpressions;
+﻿using System.ComponentModel;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Threading;
+using System.Windows.Shell;
+using TimerApp.Models;
+using TimerApp.Services;
+using TimerApp.Views;
 
 namespace TimerApp;
 
 public partial class MainWindow : Window
 {
-    // ---- Stopwatch state ----
-    private readonly Stopwatch _sw = new();
-    private readonly DispatcherTimer _swTick = new() { Interval = TimeSpan.FromMilliseconds(30) };
-    private TimeSpan _lastLap = TimeSpan.Zero;
-    private int _lapCount;
+    private const double FullWidth = 380, FullHeight = 640, MiniWidth = 280, MiniHeight = 72;
 
-    // ---- Countdown state ----
-    private readonly DispatcherTimer _tmTick = new() { Interval = TimeSpan.FromMilliseconds(100) };
-    private DateTime _tmEnd;
-    private TimeSpan _tmRemaining;
-    private bool _tmRunning;
+    private readonly TimerPage _timer = new();
+    private bool _mini;
 
     public MainWindow()
     {
         InitializeComponent();
-        _swTick.Tick += (_, _) => SwDisplay.Text = Format(_sw.Elapsed, true);
-        _tmTick.Tick += TmTick;
+        HomeHost.Content = _timer;
+        _timer.StateChanged += UpdateMini;
+
+        SubjectPicker.ManageRequested += () => Navigate(new SettingsPage(), "Settings");
+        App.Notifier.RestoreRequested += RestoreFromTray;
+
+        ApplyTopmost();
+        RestorePosition();
+        SourceInitialized += (_, _) => WindowEffects.ApplyRoundedCorners(this);
+        PreviewKeyDown += OnPreviewKeyDown;
+        Closing += OnClosing;
     }
 
-    private static string Format(TimeSpan t, bool centis) =>
-        centis
-            ? $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}.{t.Milliseconds / 10:00}"
-            : $"{(int)t.TotalHours:00}:{t.Minutes:00}:{t.Seconds:00}";
+    // ---------------- Navigation ----------------
 
-    // ================= Stopwatch =================
-    private void SwStart_Click(object sender, RoutedEventArgs e)
+    public void Navigate(UserControl page, string title)
     {
-        if (_sw.IsRunning)
+        if (_mini) ToggleMini();
+        PageHost.Content = page;
+        PageHost.Visibility = Visibility.Visible;
+        PageTitleText.Text = title;
+        Brand.Visibility = Visibility.Collapsed;
+        BackBar.Visibility = Visibility.Visible;
+        LogBtn.Visibility = page is LogPage ? Visibility.Collapsed : Visibility.Visible;
+        StatsBtn.Visibility = page is StatsPage ? Visibility.Collapsed : Visibility.Visible;
+        SettingsBtn.Visibility = page is SettingsPage ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    public void GoHome()
+    {
+        PageHost.Content = null;
+        PageHost.Visibility = Visibility.Collapsed;
+        Brand.Visibility = Visibility.Visible;
+        BackBar.Visibility = Visibility.Collapsed;
+        LogBtn.Visibility = StatsBtn.Visibility = SettingsBtn.Visibility = Visibility.Visible;
+    }
+
+    private bool OnSubPage => PageHost.Visibility == Visibility.Visible;
+
+    private void Back_Click(object sender, RoutedEventArgs e) => GoBack();
+
+    private void GoBack()
+    {
+        if (PageHost.Content is LogPage log && log.CloseEditorIfOpen()) return;
+        GoHome();
+    }
+
+    private void Log_Click(object sender, RoutedEventArgs e) => Navigate(new LogPage(), "Study log");
+    private void Stats_Click(object sender, RoutedEventArgs e) => Navigate(new StatsPage(), "Stats");
+    private void Settings_Click(object sender, RoutedEventArgs e) => Navigate(new SettingsPage(), "Settings");
+
+    // ---------------- Window controls ----------------
+
+    private void Pin_Click(object sender, RoutedEventArgs e)
+    {
+        App.Data.Settings.Topmost = !App.Data.Settings.Topmost;
+        App.SaveData();
+        ApplyTopmost();
+    }
+
+    public void ApplyTopmost()
+    {
+        Topmost = App.Data.Settings.Topmost;
+        PinBtn.Content = Topmost ? "" : "";
+        PinBtn.ToolTip = Topmost ? "Stop keeping on top" : "Keep on top";
+        PinBtn.SetResourceReference(ForegroundProperty, Topmost ? "ModeAccent" : "Muted");
+    }
+
+    private void Minimize_Click(object sender, RoutedEventArgs e) => WindowState = WindowState.Minimized;
+    private void Close_Click(object sender, RoutedEventArgs e) => Close();
+    private void Mini_Click(object sender, RoutedEventArgs e) => ToggleMini();
+    private void MiniPlay_Click(object sender, RoutedEventArgs e) => _timer.ToggleRun();
+
+    private void ToggleMini()
+    {
+        _mini = !_mini;
+        if (_mini) GoHome(); // mini mirrors the timer; shortcuts must reach it
+        FullView.Visibility = _mini ? Visibility.Collapsed : Visibility.Visible;
+        MiniView.Visibility = _mini ? Visibility.Visible : Visibility.Collapsed;
+        double right = Left + Width;
+        Width = _mini ? MiniWidth : FullWidth;
+        Height = _mini ? MiniHeight : FullHeight;
+        Left = right - Width; // grow/shrink from the right edge, where mini windows usually live
+        WindowChrome.GetWindowChrome(this).CaptionHeight = _mini ? MiniHeight : 40;
+        ClampToScreen();
+        UpdateMini();
+    }
+
+    private void UpdateMini()
+    {
+        if (!_mini) return;
+        MiniTime.Text = _timer.TimeDisplay;
+        MiniPhase.Text = _timer.Mode == SessionMode.Timer && !_timer.HasActiveRun ? "Timer" : _timer.PhaseDisplay;
+        MiniRing.Progress = _timer.RingProgress;
+        MiniPlay.Content = _timer.IsRunning ? "" : "";
+    }
+
+    private void RestoreFromTray()
+    {
+        Show();
+        if (WindowState == WindowState.Minimized) WindowState = WindowState.Normal;
+        Activate();
+    }
+
+    // ---------------- Keyboard ----------------
+
+    private void OnPreviewKeyDown(object sender, KeyEventArgs e)
+    {
+        bool typing = Keyboard.FocusedElement is TextBox;
+        bool ctrl = Keyboard.Modifiers.HasFlag(ModifierKeys.Control);
+
+        if (e.Key == Key.Escape)
         {
-            _sw.Stop();
-            _swTick.Stop();
-            SwDisplay.Text = Format(_sw.Elapsed, true);
-            SwStartBtn.Content = "Resume";
-            SwStartBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x2E, 0x8B, 0x57));
-            SwLapBtn.IsEnabled = false;
+            if (typing) Keyboard.ClearFocus();
+            else if (_timer.CloseSheetIfOpen()) { }
+            else if (_mini) ToggleMini();
+            else if (OnSubPage) GoBack();
+            e.Handled = true;
+            return;
+        }
+        if (ctrl && e.Key == Key.L) { Navigate(new LogPage(), "Study log"); e.Handled = true; return; }
+        if (ctrl && e.Key == Key.T) { Navigate(new StatsPage(), "Stats"); e.Handled = true; return; }
+        if (typing || ctrl || OnSubPage) return;
+
+        switch (e.Key)
+        {
+            case Key.Space: _timer.ToggleRun(); break;
+            case Key.R: _timer.ResetCurrent(); break;
+            case Key.L when _timer.Mode == SessionMode.Stopwatch: _timer.SkipOrLap(); break;
+            case Key.S when _timer.Mode == SessionMode.Focus: _timer.SkipOrLap(); break;
+            case Key.D1 or Key.NumPad1: _timer.SetMode(SessionMode.Focus); break;
+            case Key.D2 or Key.NumPad2: _timer.SetMode(SessionMode.Timer); break;
+            case Key.D3 or Key.NumPad3: _timer.SetMode(SessionMode.Stopwatch); break;
+            default: return;
+        }
+        e.Handled = true;
+    }
+
+    // ---------------- Position ----------------
+
+    private void RestorePosition()
+    {
+        var s = App.Data.Settings;
+        if (s.WindowLeft is { } l && s.WindowTop is { } t && IsOnScreen(l, t))
+        {
+            Left = l;
+            Top = t;
         }
         else
         {
-            _sw.Start();
-            _swTick.Start();
-            SwStartBtn.Content = "Pause";
-            SwStartBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0xC0, 0x7A, 0x1E));
-            SwLapBtn.IsEnabled = true;
+            var area = SystemParameters.WorkArea;
+            Left = area.Left + (area.Width - Width) / 2;
+            Top = area.Top + (area.Height - Height) / 2;
         }
     }
 
-    private void SwLap_Click(object sender, RoutedEventArgs e)
+    private bool IsOnScreen(double left, double top)
     {
-        var total = _sw.Elapsed;
-        var split = total - _lastLap;
-        _lastLap = total;
-        _lapCount++;
-        LapList.Items.Insert(0, $"Lap {_lapCount,2}   {Format(split, true)}   |   {Format(total, true)}");
+        // Require the title bar to land inside the virtual desktop (handles unplugged monitors).
+        double vl = SystemParameters.VirtualScreenLeft, vt = SystemParameters.VirtualScreenTop;
+        double vr = vl + SystemParameters.VirtualScreenWidth, vb = vt + SystemParameters.VirtualScreenHeight;
+        return left >= vl - Width + 80 && left + 80 <= vr && top >= vt && top + 40 <= vb;
     }
 
-    private void SwReset_Click(object sender, RoutedEventArgs e)
+    private void ClampToScreen()
     {
-        _sw.Reset();
-        _swTick.Stop();
-        _lastLap = TimeSpan.Zero;
-        _lapCount = 0;
-        LapList.Items.Clear();
-        SwDisplay.Text = "00:00:00.00";
-        SwStartBtn.Content = "Start";
-        SwStartBtn.Background = new System.Windows.Media.SolidColorBrush(System.Windows.Media.Color.FromRgb(0x2E, 0x8B, 0x57));
-        SwLapBtn.IsEnabled = false;
+        var area = SystemParameters.WorkArea;
+        Left = Math.Clamp(Left, area.Left, Math.Max(area.Left, area.Right - Width));
+        Top = Math.Clamp(Top, area.Top, Math.Max(area.Top, area.Bottom - Height));
     }
 
-    // ================= Countdown timer =================
-    private void TmStart_Click(object sender, RoutedEventArgs e)
+    private void OnClosing(object? sender, CancelEventArgs e)
     {
-        if (_tmRunning)
+        _timer.FlushOnExit();
+        var s = App.Data.Settings;
+        if (WindowState == WindowState.Normal)
         {
-            // Pause
-            _tmRemaining = _tmEnd - DateTime.UtcNow;
-            if (_tmRemaining < TimeSpan.Zero) _tmRemaining = TimeSpan.Zero;
-            _tmTick.Stop();
-            _tmRunning = false;
-            TmStartBtn.Content = "Resume";
-            return;
+            // Store the full-size position even when closing from mini mode.
+            s.WindowLeft = _mini ? Left + Width - FullWidth : Left;
+            s.WindowTop = Top;
         }
-
-        if (_tmRemaining <= TimeSpan.Zero)
-        {
-            _tmRemaining = ReadInput();
-            if (_tmRemaining <= TimeSpan.Zero)
-            {
-                MessageBox.Show("Set a time greater than zero.", "Timer");
-                return;
-            }
-        }
-
-        _tmEnd = DateTime.UtcNow + _tmRemaining;
-        _tmRunning = true;
-        TmInputPanel.IsEnabled = false;
-        TmStartBtn.Content = "Pause";
-        TmDisplay.Text = Format(_tmRemaining, false);
-        _tmTick.Start();
+        App.SaveData();
     }
-
-    private void TmTick(object? sender, EventArgs e)
-    {
-        var left = _tmEnd - DateTime.UtcNow;
-        if (left <= TimeSpan.Zero)
-        {
-            _tmTick.Stop();
-            _tmRunning = false;
-            _tmRemaining = TimeSpan.Zero;
-            TmDisplay.Text = "00:00:00";
-            TmStartBtn.Content = "Start";
-            TmInputPanel.IsEnabled = true;
-            SystemSounds.Exclamation.Play();
-            MessageBox.Show("Time's up!", "Timer", MessageBoxButton.OK, MessageBoxImage.Information);
-            return;
-        }
-        // round up so display shows 00:00:01 until it actually hits zero
-        TmDisplay.Text = Format(TimeSpan.FromSeconds(Math.Ceiling(left.TotalSeconds)), false);
-    }
-
-    private void TmReset_Click(object sender, RoutedEventArgs e)
-    {
-        _tmTick.Stop();
-        _tmRunning = false;
-        _tmRemaining = TimeSpan.Zero;
-        TmInputPanel.IsEnabled = true;
-        TmStartBtn.Content = "Start";
-        TmDisplay.Text = Format(ReadInput(), false);
-    }
-
-    private TimeSpan ReadInput()
-    {
-        int.TryParse(TmH.Text, out var h);
-        int.TryParse(TmM.Text, out var m);
-        int.TryParse(TmS.Text, out var s);
-        return new TimeSpan(h, m, s);
-    }
-
-    private void Digits_Only(object sender, TextCompositionEventArgs e) =>
-        e.Handled = !Regex.IsMatch(e.Text, "^[0-9]+$");
-
-    private void Topmost_Changed(object sender, RoutedEventArgs e) =>
-        Topmost = TopmostChk.IsChecked == true;
 }

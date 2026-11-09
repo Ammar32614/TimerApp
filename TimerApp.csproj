@@ -9,7 +9,14 @@
     <UseWindowsForms>true</UseWindowsForms>
     <AssemblyName>Stint</AssemblyName>
     <RootNamespace>TimerApp</RootNamespace>
+    <ApplicationIcon>Assets\stint.ico</ApplicationIcon>
+    <Product>Stint</Product>
+    <Version>1.0.0</Version>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="Assets\stint.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <Compile Remove="TimerApp.Tests/**" />
