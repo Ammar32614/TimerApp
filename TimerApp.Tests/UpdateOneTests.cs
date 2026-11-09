@@ -29,6 +29,13 @@ public class ThemeCatalogTests
     }
 
     [Fact]
+    public void EveryTheme_DefinesEveryKey()
+    {
+        foreach (var t in ThemeCatalog.All)
+            Assert.All(ThemeCatalog.Keys, k => Assert.True(t.Colours.ContainsKey(k), $"{t.Name} lacks {k}"));
+    }
+
+    [Fact]
     public void LightThemes_AreFlagged()
     {
         Assert.True(ThemeCatalog.Get("Daylight").IsLight);
@@ -44,6 +51,8 @@ public class FormatTests
     [InlineData(1, "<1m")]
     [InlineData(59, "<1m")]
     [InlineData(60, "1m")]
+    [InlineData(89, "1m")]
+    [InlineData(119, "2m")]   // rounds like Spoken, so the sheet and the log agree
     [InlineData(45 * 60, "45m")]
     [InlineData(3600, "1h")]
     [InlineData(3900, "1h 5m")]
@@ -54,6 +63,8 @@ public class FormatTests
     [InlineData(45, "45 sec")]
     [InlineData(60, "1 min")]
     [InlineData(89, "1 min")]
+    [InlineData(90, "2 min")]
+    [InlineData(119, "2 min")]
     [InlineData(12 * 60 + 40, "13 min")]
     [InlineData(3900, "1h 5m")]
     public void Spoken(int seconds, string expected) => Assert.Equal(expected, Format.Spoken(seconds));

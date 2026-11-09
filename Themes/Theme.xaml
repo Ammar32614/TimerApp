@@ -24,7 +24,7 @@
     <SolidColorBrush x:Key="Danger" Color="#E5484D"/>
     <SolidColorBrush x:Key="Strong" Color="#3A4150"/>
     <SolidColorBrush x:Key="Scrim" Color="#B314161C"/>
-    <!-- All of the above are replaced at runtime by ThemeManager for the chosen theme. -->
+    <!-- All of the above are replaced at runtime by App.ApplyTheme for the chosen theme. -->
 
     <FontFamily x:Key="DisplayFont">Segoe UI Variable Display, Segoe UI</FontFamily>
     <FontFamily x:Key="TextFont">Segoe UI Variable Text, Segoe UI</FontFamily>

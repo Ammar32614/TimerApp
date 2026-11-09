@@ -133,6 +133,7 @@ public partial class SettingsPage : UserControl
     {
         var dlg = new Microsoft.Win32.OpenFileDialog { Title = "Choose an alarm sound", Filter = SoundLibrary.DialogFilter };
         if (dlg.ShowDialog(Window.GetWindow(this)) != true) return;
+        Notifier.StopSound(); // release the current copy so Import can replace it
         try
         {
             var stored = SoundLibrary.Import(dlg.FileName, SoundLibrary.DefaultFolder);
@@ -152,6 +153,7 @@ public partial class SettingsPage : UserControl
 
     private void DefaultSound_Click(object sender, RoutedEventArgs e)
     {
+        Notifier.StopSound(); // release the file before deleting it
         if (S.AlarmSoundPath is { } old) SoundLibrary.TryDelete(old);
         S.AlarmSoundPath = null;
         S.AlarmSoundName = null;

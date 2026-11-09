@@ -8,7 +8,7 @@ public static class Format
     {
         if (seconds <= 0) return "0m";
         if (seconds < 60) return "<1m";
-        int m = seconds / 60;
+        int m = (int)Math.Round(seconds / 60.0, MidpointRounding.AwayFromZero); // same rounding as Spoken
         return m < 60 ? $"{m}m" : m % 60 == 0 ? $"{m / 60}h" : $"{m / 60}h {m % 60}m";
     }
 

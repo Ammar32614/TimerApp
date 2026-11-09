@@ -39,7 +39,10 @@ public partial class TimerPage : UserControl
 
     /// <summary>Everything needed to bring back a run that Reset/Skip discarded.</summary>
     private sealed record RunSnapshot(SessionMode Mode, Phase Phase, int CompletedFocus, TimeSpan Elapsed,
-        DateTime? RunStart, TimeSpan? Target, List<string> Laps, TimeSpan LastLap);
+        DateTime? RunStart, TimeSpan? Target, List<string> Laps, TimeSpan LastLap, Guid SubjectId, string Description);
+
+    /// <summary>Save needs at least one whole second, matching how Log() rounds.</summary>
+    private bool CanSave => HasActiveRun && IsStudyPhase && Math.Round(Elapsed.TotalSeconds) >= 1;
     private RunSnapshot? _discarded;
     private readonly DispatcherTimer _undoTimer = new() { Interval = TimeSpan.FromSeconds(6) };
 
@@ -169,17 +172,20 @@ public partial class TimerPage : UserControl
     /// <summary>Stops the current study run and logs exactly the time so far.</summary>
     public void SaveNow()
     {
-        if (!HasActiveRun || !IsStudyPhase) return;
+        if (!CanSave) return;
         var elapsed = Elapsed;
         _clock.Stop();
         _tick.Stop();
         HideUndo();
         Log(elapsed); // opens the rating/note sheet
-        if (_mode == SessionMode.Focus) _cycle.Advance(App.Data.Settings.LongBreakEvery); // block ended early
+        bool focusEnded = _mode == SessionMode.Focus;
+        if (focusEnded) _cycle.Advance(App.Data.Settings.LongBreakEvery); // block ended early
         _laps.Clear();
         _lastLap = TimeSpan.Zero;
         ClearRun();
         Render();
+        // Same as a block that ran out: move straight into the break if the user asked for that.
+        if (focusEnded && App.Data.Settings.AutoStartBreaks) ToggleRun();
     }
 
     private void DiscardWithUndo()
@@ -187,7 +193,7 @@ public partial class TimerPage : UserControl
         _clock.Stop();
         _tick.Stop();
         _discarded = new RunSnapshot(_mode, _cycle.Current, _cycle.CompletedFocus, Elapsed, _runStart, _target,
-            [.. _laps], _lastLap);
+            [.. _laps], _lastLap, Picker.SelectedId, DescBox.Text);
         UndoText.Text = $"Discarded {Format.Spoken((int)_discarded.Elapsed.TotalSeconds)}";
         UndoBar.Visibility = Visibility.Visible;
         _undoTimer.Stop();
@@ -215,6 +221,8 @@ public partial class TimerPage : UserControl
         _laps.Clear();
         _laps.AddRange(d.Laps);
         _lastLap = d.LastLap;
+        Picker.SelectedId = d.SubjectId; // the picker unlocks after a discard; put back what the run was for
+        DescBox.Text = d.Description;
         LapsList.Items.Clear();
         HideUndo();
         Render();
@@ -393,7 +401,7 @@ public partial class TimerPage : UserControl
         ResetBtn.ToolTip = active ? "Discard this run (R)" : _mode == SessionMode.Focus ? "Restart cycle (R)" : "Reset (R)";
 
         // Save button: any study run with time on it can be logged right now.
-        bool canSave = active && IsStudyPhase;
+        bool canSave = CanSave;
         SaveBtn.Visibility = canSave ? Visibility.Visible : Visibility.Hidden;
         if (canSave) SaveText.Text = $"Save {Format.Spoken((int)Math.Round(elapsed.TotalSeconds))} to log"; // same rounding as Log()
 

@@ -65,11 +65,15 @@ public sealed class Notifier : IDisposable
             if (_media == null)
             {
                 _media = new System.Windows.Media.MediaPlayer();
-                _media.MediaFailed += (_, _) => PlayDefault(); // unreadable/corrupt file: still make a sound
+                _media.MediaFailed += (_, _) => { StopSound(); PlayDefault(); }; // unreadable/corrupt file: still make a sound
+                _media.MediaEnded += (_, _) => StopSound();
+                _stopTimer.Tick += (_, _) => StopSound();
             }
-            _media.Stop();
-            _media.Open(new Uri(path));
+            StopSound();
+            // UriBuilder escapes characters such as '#' that new Uri(path) would treat as a fragment.
+            _media.Open(new UriBuilder { Scheme = Uri.UriSchemeFile, Host = "", Path = Path.GetFullPath(path) }.Uri);
             _media.Play();
+            _stopTimer.Start(); // a long song shouldn't play in full at every block end
             return true;
         }
         catch (Exception ex) when (ex is IOException or InvalidOperationException or UnauthorizedAccessException or UriFormatException)
@@ -79,6 +83,16 @@ public sealed class Notifier : IDisposable
     }
 
     private static System.Windows.Media.MediaPlayer? _media;
+    private static readonly System.Windows.Threading.DispatcherTimer _stopTimer = new() { Interval = TimeSpan.FromSeconds(15) };
+
+    /// <summary>Stops a custom alarm and releases its file (so it can be replaced or deleted).</summary>
+    public static void StopSound()
+    {
+        _stopTimer.Stop();
+        if (_media == null) return;
+        _media.Stop();
+        _media.Close();
+    }
 
     private static void PlayDefault()
     {

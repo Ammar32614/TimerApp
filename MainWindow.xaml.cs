@@ -30,6 +30,7 @@ public partial class MainWindow : Window
         SourceInitialized += (_, _) => WindowEffects.ApplyRoundedCorners(this, dark: !App.Theme.IsLight);
         PreviewKeyDown += OnPreviewKeyDown;
         Closing += OnClosing;
+        Activated += (_, _) => Notifier.StopSound(); // coming back to Stint silences the alarm
     }
 
     /// <summary>Brings the window forward, e.g. when Stint is launched a second time.</summary>
@@ -161,6 +162,8 @@ public partial class MainWindow : Window
         if (ctrl && e.Key == Key.T) { Navigate(new StatsPage(), "Stats"); e.Handled = true; return; }
         if (ctrl && e.Key == Key.S && !OnSubPage) { _timer.SaveNow(); e.Handled = true; return; }
         if (typing || ctrl || OnSubPage) return;
+        // Mini mode can't show the Undo bar, so don't let a stray R/S throw a run away there.
+        if (_mini && e.Key is Key.R or Key.S) { e.Handled = true; return; }
 
         switch (e.Key)
         {
