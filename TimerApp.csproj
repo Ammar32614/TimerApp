@@ -6,6 +6,19 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <UseWPF>true</UseWPF>
+    <UseWindowsForms>true</UseWindowsForms>
+    <AssemblyName>Stint</AssemblyName>
+    <RootNamespace>TimerApp</RootNamespace>
   </PropertyGroup>
+
+  <ItemGroup>
+    <Compile Remove="TimerApp.Tests/**" />
+    <None Remove="TimerApp.Tests/**" />
+    <Page Remove="TimerApp.Tests/**" />
+    <Compile Remove="docs/**;.superpowers/**" />
+    <None Remove="docs/**;.superpowers/**" />
+    <Using Remove="System.Windows.Forms" />
+    <Using Remove="System.Drawing" />
+  </ItemGroup>
 
 </Project>
